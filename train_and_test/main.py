@@ -4,6 +4,7 @@ import time
 from game.catan_state import CatanState
 from players.expectimax_baseline_player import ExpectimaxBaselinePlayer
 from players.monte_carlo_with_filter_player import MonteCarloWithFilterPlayer
+from players.random_player import RandomPlayer
 from train_and_test.logger import logger, fileLogger
 
 A, B, C, D, E, F, G = [], [], [], [], [], [], []
@@ -37,10 +38,10 @@ def clean_previous_images():
 def execute_game(plot_map=True):
     seed = None
     timeout_seconds = 5
-    p0 = MonteCarloWithFilterPlayer(seed, timeout_seconds)
-    p1 = ExpectimaxBaselinePlayer(seed, timeout_seconds)
-    p2 = ExpectimaxBaselinePlayer(seed, timeout_seconds)
-    p3 = ExpectimaxBaselinePlayer(seed, timeout_seconds)
+    p0 = RandomPlayer(seed)
+    p1 = RandomPlayer(seed)
+    p2 = RandomPlayer(seed)
+    p3 = RandomPlayer(seed)
     players = [p0, p1, p2, p3]
 
     state = CatanState(players, seed)
@@ -120,7 +121,7 @@ def run_10_games_parallel():
 
 
 def run_single_game_and_plot_map():
-    execute_game(plot_map=True)
+    execute_game(plot_map=False)
 
 
 if __name__ == '__main__':

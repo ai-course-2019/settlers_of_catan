@@ -16,7 +16,7 @@ def dfs(g: networkx.Graph, v: int=None):
     max_height = 0
     furthest_node = None
     if v is None:
-        v = next(g.nodes_iter())
+        v = list(g.nodes())[0]
     visited = {v}
     stack.append(v)
 

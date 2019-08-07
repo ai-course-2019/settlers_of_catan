@@ -661,9 +661,9 @@ class Board:
         return vertices_map
 
     def _set_vertices_attributes(self, vertices_to_lands):
-        networkx.set_node_attributes(self._roads_and_colonies, Board.lands, vertices_to_lands)
+        networkx.set_node_attributes(self._roads_and_colonies, vertices_to_lands, Board.lands)
         vertices_to_players = {v: (None, Colony.Uncolonised) for v in Board._vertices}
-        networkx.set_node_attributes(self._roads_and_colonies, Board.player, vertices_to_players)
+        networkx.set_node_attributes(self._roads_and_colonies, vertices_to_players, Board.player)
 
     def _set_edges_attributes(self, vertices_to_lands):
         for edge in self._roads_and_colonies.edges():
