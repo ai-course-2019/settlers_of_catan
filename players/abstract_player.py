@@ -12,12 +12,13 @@ from game.resource import Resource
 class AbstractPlayer(abc.ABC):
     c = 1
 
-    def __init__(self, seed: int=None, timeout_seconds=5):
+    def __init__(self, id, seed: int=None, timeout_seconds=5):
         assert seed is None or (isinstance(seed, int) and seed > 0)
         assert timeout_seconds > 0
 
         AbstractPlayer.c += 1
         seed = seed if seed is None else int(seed * AbstractPlayer.c)
+        self._id = id
         self._random_choice = np.random.RandomState(seed).choice
 
         self._timeout_seconds = timeout_seconds
@@ -29,6 +30,18 @@ class AbstractPlayer(abc.ABC):
         }
         self.unexposed_development_cards = {card: 0 for card in DevelopmentCard}
         self.exposed_development_cards = {card: 0 for card in DevelopmentCard}
+
+    def __lt__(self, other):
+        return self._id < other._id
+
+    def __le__(self, other):
+        return self._id <= other._id
+
+    def __gt__(self, other):
+        return self._id > other._id
+
+    def __ge__(self, other):
+        return self._id >= other._id
 
     @abc.abstractmethod
     def choose_move(self, state: AbstractState) -> AbstractMove:
@@ -81,6 +94,13 @@ class AbstractPlayer(abc.ABC):
         """
         for resource, amount in resources_amount.items():
             update_method(self, resource, amount)
+
+    def get_id(self):
+        """
+        As the name implies
+        :return: the id number of the player
+        """
+        return self._id
 
     def get_resource_count(self, resource_type: Resource):
         """
@@ -236,6 +256,7 @@ class AbstractPlayer(abc.ABC):
         self.remove_resource(Resource.Ore, 3)
         self.remove_resource(Resource.Grain, 2)
         self.pieces[Colony.City] -= 1
+        self.pieces[Colony.Settlement] += 1
 
     def remove_resources_for_development_card(self):
         assert self.has_resources_for_development_card()
@@ -259,6 +280,7 @@ class AbstractPlayer(abc.ABC):
         self.add_resource(Resource.Ore, 3)
         self.add_resource(Resource.Grain, 2)
         self.pieces[Colony.City] += 1
+        self.pieces[Colony.Settlement] -= 1
 
     def add_resources_for_development_card(self):
         self.add_resource(Resource.Ore)

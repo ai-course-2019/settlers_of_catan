@@ -82,6 +82,19 @@ class CatanState(AbstractState):
             players_points_count[player] += player.get_victory_point_development_cards_count()
         return players_points_count
 
+    def get_scores_by_player_indexed(self):
+        # TODO: Erez did it
+        players_points_count = [self.board.get_colonies_score(player) for player in self.players]
+        player, _ = self._get_largest_army_player_and_size()
+        if player is not None:
+            players_points_count[player.get_id()] += 2
+        player, _ = self._get_longest_road_player_and_length()
+        if player is not None:
+            players_points_count[player.get_id()] += 2
+        for player in self.players:
+            players_points_count[player.get_id()] += player.get_victory_point_development_cards_count()
+        return players_points_count
+
     def get_next_moves(self):
         """computes the next moves available from the current state
         Returns:
@@ -158,7 +171,14 @@ class CatanState(AbstractState):
                                      development_card_purchases=purchased_development_cards)
         random_move.apply()
         self._purchased_development_cards_in_current_turn_amount = 0
-        self._current_player_index = (self._current_player_index + 1) % len(self.players)
+
+        # Updating the current_player_index (Default - next player, Initilisation Phase - next/same/previous player).
+        if self.turns_count == len(self.players) or self.turns_count == 2 *len(self.players):
+            return
+        elif len(self.players) < self.turns_count < 2 * len(self.players):
+            self._current_player_index = (self._current_player_index - 1) % len(self.players)
+        else:
+            self._current_player_index = (self._current_player_index + 1) % len(self.players)
 
     def unmake_random_move(self, random_move: RandomMove):
         self._current_player_index = (self._current_player_index - 1) % len(self.players)

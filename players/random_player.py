@@ -8,9 +8,9 @@ from players.abstract_player import AbstractPlayer
 
 
 class RandomPlayer(AbstractPlayer):
-    def __init__(self, seed=None):
+    def __init__(self, id, seed=None):
         assert seed is None or (isinstance(seed, int) and seed > 0)
-        super().__init__(seed)
+        super().__init__(id, seed)
 
     def choose_move(self, state: AbstractState):
         return self._random_choice(state.get_next_moves())

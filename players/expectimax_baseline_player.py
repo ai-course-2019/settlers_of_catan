@@ -21,10 +21,10 @@ class ExpectimaxBaselinePlayer(AbstractPlayer):
         # value is is taken in account
         return float(state.get_scores_by_player()[self])
 
-    def __init__(self, seed=None, timeout_seconds=5, heuristic=None, filter_moves=lambda x, y: x):
+    def __init__(self, id, seed=None, timeout_seconds=5, heuristic=None, filter_moves=lambda x, y: x):
         assert seed is None or (isinstance(seed, int) and seed > 0)
 
-        super().__init__(seed, timeout_seconds)
+        super().__init__(id, seed, timeout_seconds)
 
         if heuristic is None:
             heuristic = self.default_heuristic
