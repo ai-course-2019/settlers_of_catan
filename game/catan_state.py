@@ -43,7 +43,7 @@ class CatanState(AbstractState):
         # we must preserve these in the state, since it's possible a
         # player has one of the special cards, while some-one has the
         # same amount of knights-cards used/longest road length
-        # i.e when player 1 paved 5 roads, and player too as-well,
+        # i.e when player 1 paved 5 roads, and player 2 as-well,
         # but only after player 1.
         self._player_with_largest_army = []
         self._player_with_longest_road = []
@@ -64,9 +64,9 @@ class CatanState(AbstractState):
         Returns:
             bool: indicating whether the current state is a final one
         """
-        players_points_count = self.get_scores_by_player()
+        players_points_count = self.get_scores_by_player_indexed()
 
-        highest_score = max(players_points_count.values())
+        highest_score = max(players_points_count)
         return highest_score >= 10
 
     def get_scores_by_player(self):
@@ -187,6 +187,10 @@ class CatanState(AbstractState):
     def get_current_player(self):
         """returns the player that should play next"""
         return self.players[self._current_player_index]
+
+    def get_current_player_index(self):
+        "returns the index of the current player"
+        return (self._current_player_index - 1) % len(self.players)
 
     def pop_development_card(self) -> DevelopmentCard:
         return self._dev_cards.pop()
