@@ -173,7 +173,7 @@ class CatanState(AbstractState):
         self._purchased_development_cards_in_current_turn_amount = 0
 
         # Updating the current_player_index (Default - next player, Initilisation Phase - next/same/previous player).
-        if self.turns_count == len(self.players) or self.turns_count == 2 *len(self.players):
+        if self.turns_count == len(self.players) or self.turns_count == 2 * len(self.players):
             return
         elif len(self.players) < self.turns_count < 2 * len(self.players):
             self._current_player_index = (self._current_player_index - 1) % len(self.players)
@@ -181,7 +181,12 @@ class CatanState(AbstractState):
             self._current_player_index = (self._current_player_index + 1) % len(self.players)
 
     def unmake_random_move(self, random_move: RandomMove):
-        self._current_player_index = (self._current_player_index - 1) % len(self.players)
+        if self.turns_count == len(self.players) or self.turns_count == 2 * len(self.players):
+            pass
+        elif len(self.players) < self.turns_count < 2 * len(self.players):
+            self._current_player_index = (self._current_player_index + 1) % len(self.players)
+        else:
+            self._current_player_index = (self._current_player_index - 1) % len(self.players)
         random_move.revert()
 
     def get_current_player(self):
