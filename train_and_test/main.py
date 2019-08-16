@@ -45,7 +45,7 @@ def execute_game(plot_map=True):
     p0 = RandomPlayer(0, seed)
     p1 = RandomPlayer(1, seed)
     p2 = RandomPlayer(2, seed)
-    p3 = ExpectimaxBaselinePlayer(3, seed)
+    p3 = MonteCarloWithFilterPlayer(3, seed)
     players = [p0, p1, p2, p3]
 
     state = CatanState(players, seed)
