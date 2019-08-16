@@ -7,6 +7,10 @@ from players.monte_carlo_with_filter_player import MonteCarloWithFilterPlayer
 from players.random_player import RandomPlayer
 from train_and_test.logger import logger, fileLogger
 
+
+from players.tomer_playa import ExpecTomer
+
+
 A, B, C, D, E, F, G = [], [], [], [], [], [], []
 excel_file_name = 'NAME_NOT_SET_{}.xlsx'.format(time.time())
 
@@ -41,7 +45,7 @@ def execute_game(plot_map=True):
     p0 = RandomPlayer(0, seed)
     p1 = RandomPlayer(1, seed)
     p2 = RandomPlayer(2, seed)
-    p3 = RandomPlayer(3, seed)
+    p3 = ExpectimaxBaselinePlayer(3, seed)
     players = [p0, p1, p2, p3]
 
     state = CatanState(players, seed)

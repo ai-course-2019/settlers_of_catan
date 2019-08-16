@@ -4,8 +4,15 @@ from players.expectimax_weighted_probabilities_with_filter_player import *
 from players.abstract_player import *
 from game.resource import *
 from game.board import *
+from game.pieces import *
 from game.development_cards import *
-import math
+from math import *
+import numpy as np
+
+
+import copy
+from players.random_player import RandomPlayer
+from collections import Counter
 
 
 MAX_ITERATIONS = 10
@@ -14,14 +21,45 @@ MAX_ITERATIONS = 10
 class ExpecTomer(ExpectimaxBaselinePlayer):
 
 
-    def __init__(self, player_id, timeout_seconds=5):
-        super().__init__(id=player_id, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=self.filmer_toves)
+
+    def __init__(self, player_id, seed=None, timeout_seconds=5):
+        super().__init__(id=player_id, seed = seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=self.filmer_toves)
 
 
     def choose_resources_to_drop(self) -> Dict[Resource, int]:
-        if self.tomer_in_first_phase(state):
-            return self.tomer_drops_mic_in_first_phase(state)
-        return self.tomer_drops_mic_in_final_phase(state)
+        # if self.tomer_in_first_phase(state):
+        #     return self.tomer_drops_mic_in_first_phase(state)
+        # return self.tomer_drops_mic_in_final_phase(state)
+        if sum(self.resources.values()) < 8:
+            return {}
+        resources_count = sum(self.resources.values())
+        resources_to_drop_count = ceil(resources_count / 2)
+        if self.can_settle_city() and resources_count >= sum(ResourceAmounts.city.values()) * 2:
+            self.remove_resources_and_piece_for_city()
+            resources_to_drop = copy.deepcopy(self.resources)
+            self.add_resources_and_piece_for_city()
+
+        elif self.can_settle_settlement() and resources_count >= sum(ResourceAmounts.settlement.values()) * 2:
+            self.remove_resources_and_piece_for_settlement()
+            resources_to_drop = copy.deepcopy(self.resources)
+            self.add_resources_and_piece_for_settlement()
+
+        elif (self.has_resources_for_development_card() and
+              resources_count >= sum(ResourceAmounts.development_card.values()) * 2):
+            self.remove_resources_for_development_card()
+            resources_to_drop = copy.deepcopy(self.resources)
+            self.add_resources_for_development_card()
+
+        elif self.can_pave_road() and resources_count >= sum(ResourceAmounts.road.values()) * 2:
+            self.remove_resources_and_piece_for_road()
+            resources_to_drop = copy.deepcopy(self.resources)
+            self.add_resources_and_piece_for_road()
+
+        else:
+            return RandomPlayer.choose_resources_to_drop(self)
+
+        resources_to_drop = [resource for resource, count in resources_to_drop.items() for _ in range(count)]
+        return Counter(self._random_choice(resources_to_drop, resources_to_drop_count, replace=False))
 
 
     def tomer_drops_mic_in_first_phase(self, state):
@@ -32,8 +70,9 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         return None
 
 
-    def filmer_toves(self, state):
-        pass
+    def filmer_toves(self, next_moves, state):
+        return []
+
 
 
     def tomeristic(self, state: CatanState):
@@ -48,7 +87,7 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
 
     def tomer_in_first_phase(self, state):
         my_victory_points = int(state.get_scores_by_player()[self])
-        return my_victory_points <= 6
+        return my_victory_points <= 7
 
 
     def tomeristic_initialisation_phase(self, state):
@@ -80,6 +119,8 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         grain_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Grain)
         ore_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Ore)
 
+        resource_expectation = ExpecTomer.get_resource_expectation(self, state)
+
         # the number of unexposed development cards, except for VP dev cards.
         num_dev_cards = sum(self.unexposed_development_cards) - self.unexposed_development_cards[DevelopmentCard.VictoryPoint]
 
@@ -90,12 +131,101 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         can_build_city = 1 if self.can_settle_city() else 0
         can_build_dev_card = 1 if self.has_resources_for_development_card() else 0
 
-        # resource expectation!!
         num_places_to_build = len(board.get_settleable_locations_by_player())
+
+        values = np.array([brick_count,lumber_count,wool_count,grain_count,
+                           ore_count,resource_expectation[Resource.Brick],
+                           resource_expectation[Resource.Lumber],
+                           resource_expectation[Resource.Wool],
+                           resource_expectation[Resource.Grain],
+                           resource_expectation[Resource.Ore],
+                           resource_expectation[Resource.Brick] * (1 / brick_trade_ratio),
+                           resource_expectation[Resource.Lumber] * (1 / lumber_trade_ratio),
+                           resource_expectation[Resource.Wool] * (1 / wool_trade_ratio),
+                           resource_expectation[Resource.Grain] * (1 / grain_trade_ratio),
+                           resource_expectation[Resource.Ore] * (1 / ore_trade_ratio),
+                           num_dev_cards, - avg_vp_diff, - max_vp_diff,
+                           scores_by_players[self],
+                           can_build_settlement, can_build_city,
+                           can_build_dev_card, num_places_to_build])
+
+        return np.sum(values)
+
+    def tomeristic_first_phase_design2(self, state, weights):
+        """
+        prefer higher expected resource yield, rather than VP.
+        also reward having places to build settlements.
+        :param state: the current state of the game.
+        :param weights: a np array of weights to each value that the heuristic takes into account.
+        :return: returns a score for this state.
+        """
+
+        values = np.zeros(20)
+
+        board = state.board
+        scores_by_players = state.get_scores_by_player()
+
+        # how many cards of each resource we have right now
+        values[0] = self.get_resource_count(Resource.Brick)
+        values[1] = self.get_resource_count(Resource.Lumber)
+        values[2] = self.get_resource_count(Resource.Wool)
+        values[3] = self.get_resource_count(Resource.Grain)
+        values[4] = self.get_resource_count(Resource.Ore)
+
+        # what is our trading ratio for each resource
+        brick_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Brick)
+        lumber_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Lumber)
+        wool_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Wool)
+        grain_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Grain)
+        ore_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Ore)
+
+        resource_expectation = ExpecTomer.get_resource_expectation(self, state)
+
+        # the number of unexposed development cards, except for VP dev cards.
+        num_dev_cards = sum(self.unexposed_development_cards) - self.unexposed_development_cards[DevelopmentCard.VictoryPoint]
+
+        avg_vp_diff = ExpecTomer.get_avg_vp_difference(scores_by_players, self)
+        max_vp_diff = ExpecTomer.get_max_vp_difference(scores_by_players, self)
+
+        can_build_settlement = 1 if self.can_settle_settlement() else 0
+        can_build_city = 1 if self.can_settle_city() else 0
+        can_build_dev_card = 1 if self.has_resources_for_development_card() else 0
+
+        num_places_to_build = len(board.get_settleable_locations_by_player())
+
+        values = np.array([brick_count,lumber_count,wool_count,grain_count,
+                           ore_count,resource_expectation[Resource.Brick],
+                           resource_expectation[Resource.Lumber],
+                           resource_expectation[Resource.Wool],
+                           resource_expectation[Resource.Grain],
+                           resource_expectation[Resource.Ore],
+                           resource_expectation[Resource.Brick] * (1 / brick_trade_ratio),
+                           resource_expectation[Resource.Lumber] * (1 / lumber_trade_ratio),
+                           resource_expectation[Resource.Wool] * (1 / wool_trade_ratio),
+                           resource_expectation[Resource.Grain] * (1 / grain_trade_ratio),
+                           resource_expectation[Resource.Ore] * (1 / ore_trade_ratio),
+                           num_dev_cards, - avg_vp_diff, - max_vp_diff,
+                           scores_by_players[self],
+                           can_build_settlement, can_build_city,
+                           can_build_dev_card, num_places_to_build])
+
+        return np.sum(values)
+
+
 
 
     def tomeristic_final_phase(self, state):
-        pass
+        scores_by_players = state.get_scores_by_player()
+        can_build_dev_card = 1 if self.has_resources_for_development_card() else 0
+
+        resource_expectation = ExpecTomer.get_resource_expectation(self,
+                                                                   state)
+
+        return 2 * scores_by_players[self] + 4* can_build_dev_card + sum([resource_expectation[Resource.Brick],
+                           resource_expectation[Resource.Lumber],
+                           resource_expectation[Resource.Wool],
+                           resource_expectation[Resource.Grain],
+                           resource_expectation[Resource.Ore]])
 
 
     @staticmethod
@@ -113,11 +243,36 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
 
 
     @staticmethod
-    def get_resource_expectation():
+    def get_resource_expectation(player, state):
+        #TODO: check that this function works properly
         """
         calculates the expected resource yield per one turn per player.
-        :return:
+        :return: a dictionary of the resource expectation of the given player.
+        each resource is a key, and it's value is that player's expected yield.
         """
+        res_yield = {Colony.Settlement: 1, Colony.City: 2}
+        resources = {r: 0 for r in Resource}
+
+        for location in state.board.get_locations_colonised_by_player(player):
+            colony_yield = res_yield[state.board.get_colony_type_at_location(location)]
+            for land in state.board._roads_and_colonies.node[location][Board.lands]: # the adjacent lands to the location we check
+                resources[land.resource] += colony_yield * state.probabilities_by_dice_values[land.dice_value]
+
+        return resources
+
+
+        # for player, factor in self._players_and_factors:
+        #     for location in s.board.get_locations_colonised_by_player(player):
+        #         weight = self.weights[s.board.get_colony_type_at_location(location)]
+        #         for dice_value in s.board.get_surrounding_dice_values(location):
+        #             score += s.probabilities_by_dice_values[dice_value] * weight * factor
+
+
+        # return [land.resource for land in
+        #         self._roads_and_colonies.node[location][Board.lands]
+        #         if land.resource is not None]
+
+
 
 
     @staticmethod
