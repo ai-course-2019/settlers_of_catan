@@ -9,10 +9,10 @@ from game.development_cards import *
 from math import *
 import numpy as np
 
-
 import copy
 from players.random_player import RandomPlayer
 from collections import Counter
+from players.filters import create_monte_carlo_filter
 
 
 MAX_ITERATIONS = 10
@@ -21,9 +21,8 @@ MAX_ITERATIONS = 10
 class ExpecTomer(ExpectimaxBaselinePlayer):
 
 
-
     def __init__(self, player_id, seed=None, timeout_seconds=5):
-        super().__init__(id=player_id, seed = seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=self.filmer_toves)
+        super().__init__(id=player_id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=create_monte_carlo_filter(seed), filter_random_moves=create_monte_carlo_filter(seed, 10))
 
 
     def choose_resources_to_drop(self) -> Dict[Resource, int]:
@@ -71,8 +70,11 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
 
 
     def filmer_toves(self, next_moves, state):
-        return []
+        return next_moves
 
+
+    def filmer_toves(self, next_moves, state):
+        return []
 
 
     def tomeristic(self, state: CatanState):
@@ -133,8 +135,8 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
 
         num_places_to_build = len(board.get_settleable_locations_by_player())
 
-        values = np.array([brick_count,lumber_count,wool_count,grain_count,
-                           ore_count,resource_expectation[Resource.Brick],
+        values = np.array([brick_count, lumber_count, wool_count, grain_count,
+                           ore_count, resource_expectation[Resource.Brick],
                            resource_expectation[Resource.Lumber],
                            resource_expectation[Resource.Wool],
                            resource_expectation[Resource.Grain],
@@ -150,6 +152,7 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
                            can_build_dev_card, num_places_to_build])
 
         return np.sum(values)
+
 
     def tomeristic_first_phase_design2(self, state, weights):
         """
@@ -193,8 +196,8 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
 
         num_places_to_build = len(board.get_settleable_locations_by_player())
 
-        values = np.array([brick_count,lumber_count,wool_count,grain_count,
-                           ore_count,resource_expectation[Resource.Brick],
+        values = np.array([brick_count, lumber_count, wool_count, grain_count,
+                           ore_count, resource_expectation[Resource.Brick],
                            resource_expectation[Resource.Lumber],
                            resource_expectation[Resource.Wool],
                            resource_expectation[Resource.Grain],
@@ -212,8 +215,6 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         return np.sum(values)
 
 
-
-
     def tomeristic_final_phase(self, state):
         scores_by_players = state.get_scores_by_player()
         can_build_dev_card = 1 if self.has_resources_for_development_card() else 0
@@ -221,11 +222,11 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         resource_expectation = ExpecTomer.get_resource_expectation(self,
                                                                    state)
 
-        return 2 * scores_by_players[self] + 4* can_build_dev_card + sum([resource_expectation[Resource.Brick],
-                           resource_expectation[Resource.Lumber],
-                           resource_expectation[Resource.Wool],
-                           resource_expectation[Resource.Grain],
-                           resource_expectation[Resource.Ore]])
+        return 2 * scores_by_players[self] + 4 * can_build_dev_card + sum([resource_expectation[Resource.Brick],
+                                                                           resource_expectation[Resource.Lumber],
+                                                                           resource_expectation[Resource.Wool],
+                                                                           resource_expectation[Resource.Grain],
+                                                                           resource_expectation[Resource.Ore]])
 
 
     @staticmethod
@@ -244,7 +245,7 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
 
     @staticmethod
     def get_resource_expectation(player, state):
-        #TODO: check that this function works properly
+        # TODO: check that this function works properly
         """
         calculates the expected resource yield per one turn per player.
         :return: a dictionary of the resource expectation of the given player.
@@ -255,7 +256,7 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
 
         for location in state.board.get_locations_colonised_by_player(player):
             colony_yield = res_yield[state.board.get_colony_type_at_location(location)]
-            for land in state.board._roads_and_colonies.node[location][Board.lands]: # the adjacent lands to the location we check
+            for land in state.board._roads_and_colonies.node[location][Board.lands]:  # the adjacent lands to the location we check
                 resources[land.resource] += colony_yield * state.probabilities_by_dice_values[land.dice_value]
 
         return resources
@@ -271,8 +272,6 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         # return [land.resource for land in
         #         self._roads_and_colonies.node[location][Board.lands]
         #         if land.resource is not None]
-
-
 
 
     @staticmethod

@@ -14,6 +14,7 @@ from train_and_test.logger import logger
 
 class ExpectimaxBaselinePlayer(AbstractPlayer):
 
+
     def default_heuristic(self, state: CatanState):
         if state.is_initialisation_phase():
             return self._random_choice([i for i in range(10)])
@@ -21,7 +22,9 @@ class ExpectimaxBaselinePlayer(AbstractPlayer):
         # value is is taken in account
         return float(state.get_scores_by_player()[self])
 
-    def __init__(self, id, seed=None, timeout_seconds=5, heuristic=None, filter_moves=lambda x, y: x):
+
+    def __init__(self, id, seed=None, timeout_seconds=5, heuristic=None, filter_moves=lambda x, y: x,
+                 filter_random_moves=lambda x, y: x):
         assert seed is None or (isinstance(seed, int) and seed > 0)
 
         super().__init__(id, seed, timeout_seconds)
@@ -33,12 +36,13 @@ class ExpectimaxBaselinePlayer(AbstractPlayer):
             is_maximizing_player=lambda p: p is self,
             evaluate_heuristic_value=heuristic,
             timeout_seconds=self._timeout_seconds,
-            filter_moves=filter_moves)
+            filter_moves=filter_moves,
+            filter_random_moves=filter_random_moves)
 
     def choose_move(self, state: CatanState):
-#        self.expectimax_alpha_beta.start_turn_timer()
+        #        self.expectimax_alpha_beta.start_turn_timer()
         best_move, move, depth = None, None, 1
- #       while not self.expectimax_alpha_beta.ran_out_of_time:
+        #       while not self.expectimax_alpha_beta.ran_out_of_time:
         for i in range(1):
             best_move = move
             logger.info('starting depth {}'.format(depth))
@@ -49,6 +53,7 @@ class ExpectimaxBaselinePlayer(AbstractPlayer):
         else:
             logger.warning('did not finish depth 1, returning a random move')
             return RandomPlayer.choose_move(self, state)
+
 
     def choose_resources_to_drop(self) -> Dict[Resource, int]:
         if sum(self.resources.values()) < 8:
@@ -82,12 +87,14 @@ class ExpectimaxBaselinePlayer(AbstractPlayer):
         resources_to_drop = [resource for resource, count in resources_to_drop.items() for _ in range(count)]
         return Counter(self._random_choice(resources_to_drop, resources_to_drop_count, replace=False))
 
+
     def set_heuristic(self, evaluate_heuristic_value: Callable[[AbstractState], float]):
         """
         set heuristic evaluation of a state in a game
         :param evaluate_heuristic_value: a callable that given state returns a float. higher means "better" state
         """
         self.expectimax_alpha_beta.evaluate_heuristic_value = evaluate_heuristic_value
+
 
     def set_filter(self, filter_moves: Callable[[List[AbstractMove]], List[AbstractMove]]):
         """
