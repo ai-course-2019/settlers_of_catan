@@ -78,6 +78,7 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
     def tomeristic(self, state: CatanState):
         # as discussed with Shaul, this isn't zero-sum heuristic, but a max-gain approach where only own player's
         # value is is taken in account
+        print("*************************hi************************************")
         if state.is_initialisation_phase():
             return self.tomeristic_initialisation_phase(state)
         if self.tomer_in_first_phase(state):
@@ -151,7 +152,7 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
 
         return np.sum(values)
 
-    def tomeristic_first_phase_design2(self, state, weights):
+    def tomeristic_first_phase_design2(self, state, weights = np.ones(50)):
         """
         prefer higher expected resource yield, rather than VP.
         also reward having places to build settlements.
@@ -160,17 +161,18 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         :return: returns a score for this state.
         """
 
-        values = np.zeros(20)
+        values = np.zeros(50) # arbitrary number (just has to be large enough)
 
         board = state.board
         scores_by_players = state.get_scores_by_player()
+        currentResouces = self.resources
 
         # how many cards of each resource we have right now
-        values[0] = self.get_resource_count(Resource.Brick)
-        values[1] = self.get_resource_count(Resource.Lumber)
-        values[2] = self.get_resource_count(Resource.Wool)
-        values[3] = self.get_resource_count(Resource.Grain)
-        values[4] = self.get_resource_count(Resource.Ore)
+        values[0] = currentResouces(Resource.Brick)
+        values[1] = currentResouces(Resource.Lumber)
+        values[2] = currentResouces(Resource.Wool)
+        values[3] = currentResouces(Resource.Grain)
+        values[4] = currentResouces(Resource.Ore)
 
         # what is our trading ratio for each resource
         brick_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Brick)
@@ -179,39 +181,59 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         grain_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Grain)
         ore_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Ore)
 
+        # current resources * trade ratios
+        values[5] = currentResouces(Resource.Brick) * (1 / brick_trade_ratio)
+        values[6] = currentResouces[Resource.Lumber] * (1 / lumber_trade_ratio)
+        values[7] = currentResouces[Resource.Wool] * (1 / wool_trade_ratio)
+        values[8] = currentResouces[Resource.Grain] * (1 / grain_trade_ratio)
+        values[9] = currentResouces[Resource.Ore] * (1 / ore_trade_ratio)
+
         resource_expectation = ExpecTomer.get_resource_expectation(self, state)
 
-        # the number of unexposed development cards, except for VP dev cards.
-        num_dev_cards = sum(self.unexposed_development_cards) - self.unexposed_development_cards[DevelopmentCard.VictoryPoint]
+        # resource expectation
+        values[10] = resource_expectation[Resource.Brick]
+        values[11] = resource_expectation[Resource.Lumber]
+        values[12] = resource_expectation[Resource.Wool]
+        values[13] = resource_expectation[Resource.Grain]
+        values[14] = resource_expectation[Resource.Ore]
 
-        avg_vp_diff = ExpecTomer.get_avg_vp_difference(scores_by_players, self)
-        max_vp_diff = ExpecTomer.get_max_vp_difference(scores_by_players, self)
+        # resource expectations * trade ratios
+        values[15] = resource_expectation[Resource.Brick] * (1 / brick_trade_ratio)
+        values[16] = resource_expectation[Resource.Lumber] * (1 / lumber_trade_ratio)
+        values[17] = resource_expectation[Resource.Wool] * (1 / wool_trade_ratio)
+        values[18] = resource_expectation[Resource.Grain] * (1 / grain_trade_ratio)
+        values[19] = resource_expectation[Resource.Ore] * (1 / ore_trade_ratio)
 
-        can_build_settlement = 1 if self.can_settle_settlement() else 0
-        can_build_city = 1 if self.can_settle_city() else 0
-        can_build_dev_card = 1 if self.has_resources_for_development_card() else 0
-
-        num_places_to_build = len(board.get_settleable_locations_by_player())
-
-        values = np.array([brick_count,lumber_count,wool_count,grain_count,
-                           ore_count,resource_expectation[Resource.Brick],
-                           resource_expectation[Resource.Lumber],
-                           resource_expectation[Resource.Wool],
-                           resource_expectation[Resource.Grain],
-                           resource_expectation[Resource.Ore],
-                           resource_expectation[Resource.Brick] * (1 / brick_trade_ratio),
-                           resource_expectation[Resource.Lumber] * (1 / lumber_trade_ratio),
-                           resource_expectation[Resource.Wool] * (1 / wool_trade_ratio),
-                           resource_expectation[Resource.Grain] * (1 / grain_trade_ratio),
-                           resource_expectation[Resource.Ore] * (1 / ore_trade_ratio),
-                           num_dev_cards, - avg_vp_diff, - max_vp_diff,
-                           scores_by_players[self],
-                           can_build_settlement, can_build_city,
-                           can_build_dev_card, num_places_to_build])
-
-        return np.sum(values)
+        # total resource expectation
+        values[20] = np.sum(values[10,14])
 
 
+        # the number of unexposed development cards, except for VP dev cards. (num dev cards)
+        values[21] = sum(self.unexposed_development_cards) - self.unexposed_development_cards[DevelopmentCard.VictoryPoint]
+
+        # average and max difference between player's VP, and other's VP. should be with negative weights.
+        values[22] = ExpecTomer.get_avg_vp_difference(scores_by_players, self) # Avg VP diff
+        values[23] = ExpecTomer.get_max_vp_difference(scores_by_players, self) # Max VP diff
+
+        values[24] = 1 if self.can_settle_settlement() else 0
+        values[25] = 1 if self.can_settle_city() else 0
+        values[26] = 1 if self.has_resources_for_development_card() else 0
+
+        values[27] = len(board.get_settleable_locations_by_player()) # number of places we could build a settlement
+
+        # estimate how many turns it would take to get the resources for a road, settlement, city or dev card.
+        values[28] = self.get_turns_till_piece(currentResouces, resource_expectation, ResourceAmounts.road)
+        values[29] = self.get_turns_till_piece(currentResouces,
+                                               resource_expectation,
+                                               ResourceAmounts.settlement)
+        values[30] = self.get_turns_till_piece(currentResouces,
+                                               resource_expectation,
+                                               ResourceAmounts.city)
+        values[31] = self.get_turns_till_piece(currentResouces,
+                                               resource_expectation,
+                                               ResourceAmounts.development_card)
+
+        return np.prod(values, weights)
 
 
     def tomeristic_final_phase(self, state):
@@ -273,7 +295,27 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         #         if land.resource is not None]
 
 
+    @staticmethod
+    def get_turns_till_piece(currentResources, resourceExpectation, requiredResourcesForPiece):
+        """
+        returns the estimation of the number of turns it would take to get all the resources to build the specified piece or dev card.
+        :param resourceExpectation: a dictionary with the current resource expectation of the player (Resource -> number)
+        :param currentResources: a dictionary with the resources the player has in hand at the moment.
+        :param requiredResourcesForPiece: a dictionary with the required amounts for the desired piece.
+        :return:
+        """
 
+        num_turns = 0
+
+        for r in Resource:
+            needed_amount = requiredResourcesForPiece[r] - currentResources[r]
+            if needed_amount > 0: # if we have the resource (in the right amount) - we are good. nothing to do
+                if resourceExpectation[r] == 0:
+                    num_turns += 4 / max(resourceExpectation)
+                    continue
+                num_turns = max(num_turns, ceil(needed_amount / resourceExpectation[r]))
+
+        return num_turns
 
     @staticmethod
     def get_avg_vp_difference(score_by_players, player):
@@ -289,3 +331,5 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         :return: the maximal difference between the player's vp, and other players vp.
         """
         return max(score_by_player[player] - score_by_player[other] for other in score_by_player.keys if other != player)
+
+
