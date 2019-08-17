@@ -18,7 +18,8 @@ from players.filters import create_monte_carlo_filter
 MAX_ITERATIONS = 10
 
 
-class ExpecTomer(ExpectimaxBaselinePlayer):
+class Winner(ExpectimaxBaselinePlayer):
+
 
     def __init__(self, player_id, seed=None, timeout_seconds=5):
         super().__init__(id=player_id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=create_monte_carlo_filter(seed), filter_random_moves=create_monte_carlo_filter(seed, 10))
@@ -68,12 +69,8 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         return None
 
 
-    def filmer_toves(self, next_moves, state):
-        return next_moves
-
-
     def filter_moves(self, next_moves, state):
-        return []
+        return next_moves
 
 
     def tomeristic(self, state: CatanState):
@@ -114,19 +111,19 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         ore_count = self.get_resource_count(Resource.Ore)
 
         # what is our trading ratio for each resource
-        brick_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Brick)
-        lumber_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Lumber)
-        wool_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Wool)
-        grain_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Grain)
-        ore_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Ore)
+        brick_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Brick)
+        lumber_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Lumber)
+        wool_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Wool)
+        grain_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Grain)
+        ore_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Ore)
 
-        resource_expectation = ExpecTomer.get_resource_expectation(self, state)
+        resource_expectation = Winner.get_resource_expectation(self, state)
 
         # the number of unexposed development cards, except for VP dev cards.
         num_dev_cards = sum(self.unexposed_development_cards) - self.unexposed_development_cards[DevelopmentCard.VictoryPoint]
 
-        avg_vp_diff = ExpecTomer.get_avg_vp_difference(scores_by_players, self)
-        max_vp_diff = ExpecTomer.get_max_vp_difference(scores_by_players, self)
+        avg_vp_diff = Winner.get_avg_vp_difference(scores_by_players, self)
+        max_vp_diff = Winner.get_max_vp_difference(scores_by_players, self)
 
         can_build_settlement = 1 if self.can_settle_settlement() else 0
         can_build_city = 1 if self.can_settle_city() else 0
@@ -175,19 +172,19 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         values[4] = self.get_resource_count(Resource.Ore)
 
         # what is our trading ratio for each resource
-        brick_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Brick)
-        lumber_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Lumber)
-        wool_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Wool)
-        grain_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Grain)
-        ore_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Ore)
+        brick_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Brick)
+        lumber_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Lumber)
+        wool_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Wool)
+        grain_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Grain)
+        ore_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Ore)
 
-        resource_expectation = ExpecTomer.get_resource_expectation(self, state)
+        resource_expectation = Winner.get_resource_expectation(self, state)
 
         # the number of unexposed development cards, except for VP dev cards.
         num_dev_cards = sum(self.unexposed_development_cards) - self.unexposed_development_cards[DevelopmentCard.VictoryPoint]
 
-        avg_vp_diff = ExpecTomer.get_avg_vp_difference(scores_by_players, self)
-        max_vp_diff = ExpecTomer.get_max_vp_difference(scores_by_players, self)
+        avg_vp_diff = Winner.get_avg_vp_difference(scores_by_players, self)
+        max_vp_diff = Winner.get_max_vp_difference(scores_by_players, self)
 
         can_build_settlement = 1 if self.can_settle_settlement() else 0
         can_build_city = 1 if self.can_settle_city() else 0
@@ -218,8 +215,8 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         scores_by_players = state.get_scores_by_player()
         can_build_dev_card = 1 if self.has_resources_for_development_card() else 0
 
-        resource_expectation = ExpecTomer.get_resource_expectation(self,
-                                                                   state)
+        resource_expectation = Winner.get_resource_expectation(self,
+                                                               state)
 
         return 2 * scores_by_players[self] + 4 * can_build_dev_card + sum([resource_expectation[Resource.Brick],
                                                                            resource_expectation[Resource.Lumber],

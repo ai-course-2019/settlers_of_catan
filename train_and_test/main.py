@@ -11,7 +11,7 @@ from players.monte_carlo_player import *
 from players.monte_carlo_with_filter_player import *
 from players.random_player import RandomPlayer
 from train_and_test.logger import logger, fileLogger
-from players.tomer_playa import ExpecTomer
+from players.tomer_playa import Winner
 
 
 A, B, C, D, E, F, G = [], [], [], [], [], [], []
@@ -45,7 +45,7 @@ def clean_previous_images():
 def execute_game(plot_map=True):
     seed = None
     timeout_seconds = 5
-    p0 = ExpecTomer(0, seed, 5)
+    p0 = Winner(0, seed, 5)
     p1 = RandomPlayer(1)
     p2 = RandomPlayer(2)
     p3 = RandomPlayer(3)
