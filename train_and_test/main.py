@@ -11,7 +11,7 @@ from players.monte_carlo_player import *
 from players.monte_carlo_with_filter_player import *
 from players.random_player import RandomPlayer
 from train_and_test.logger import logger, fileLogger
-from players.tomer_playa import Winner
+from players.winner import Winner
 
 
 A, B, C, D, E, F, G = [], [], [], [], [], [], []
