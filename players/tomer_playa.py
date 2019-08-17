@@ -20,7 +20,6 @@ MAX_ITERATIONS = 10
 
 class ExpecTomer(ExpectimaxBaselinePlayer):
 
-
     def __init__(self, player_id, seed=None, timeout_seconds=5):
         super().__init__(id=player_id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=create_monte_carlo_filter(seed), filter_random_moves=create_monte_carlo_filter(seed, 10))
 
@@ -61,11 +60,11 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         return Counter(self._random_choice(resources_to_drop, resources_to_drop_count, replace=False))
 
 
-    def tomer_drops_mic_in_first_phase(self, state):
+    def drop_resources_in_first_phase(self, state):
         return None
 
 
-    def tomer_drops_mic_in_final_phase(self, state):
+    def drop_resources_in_final_phase(self, state):
         return None
 
 
@@ -73,7 +72,7 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         return next_moves
 
 
-    def filmer_toves(self, next_moves, state):
+    def filter_moves(self, next_moves, state):
         return []
 
 
@@ -81,22 +80,22 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         # as discussed with Shaul, this isn't zero-sum heuristic, but a max-gain approach where only own player's
         # value is is taken in account
         if state.is_initialisation_phase():
-            return self.tomeristic_initialisation_phase(state)
-        if self.tomer_in_first_phase(state):
-            return self.tomeristic_first_phase(state)
-        return self.tomeristic_final_phase(state)
+            return self.heuristic_initialisation_phase(state)
+        if self.in_first_phase(state):
+            return self.heuristic_first_phase(state)
+        return self.heuristic_final_phase(state)
 
 
-    def tomer_in_first_phase(self, state):
+    def in_first_phase(self, state):
         my_victory_points = int(state.get_scores_by_player()[self])
         return my_victory_points <= 7
 
 
-    def tomeristic_initialisation_phase(self, state):
+    def heuristic_initialisation_phase(self, state):
         pass
 
 
-    def tomeristic_first_phase(self, state):
+    def heuristic_first_phase(self, state):
         """
         prefer higher expected resource yield, rather than VP.
         also reward having places to build settlements.
@@ -154,7 +153,7 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         return np.sum(values)
 
 
-    def tomeristic_first_phase_design2(self, state, weights):
+    def heuristic_first_phase_design2(self, state, weights):
         """
         prefer higher expected resource yield, rather than VP.
         also reward having places to build settlements.
@@ -215,7 +214,7 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         return np.sum(values)
 
 
-    def tomeristic_final_phase(self, state):
+    def heuristic_final_phase(self, state):
         scores_by_players = state.get_scores_by_player()
         can_build_dev_card = 1 if self.has_resources_for_development_card() else 0
 
