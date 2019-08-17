@@ -13,17 +13,17 @@ import numpy as np
 import copy
 from players.random_player import RandomPlayer
 from collections import Counter
+from players.filters import create_monte_carlo_filter
 
 
 MAX_ITERATIONS = 10
 
 
-class ExpecTomer(ExpectimaxBaselinePlayer):
-
+class Winner(ExpectimaxBaselinePlayer):
 
 
     def __init__(self, player_id, seed=None, timeout_seconds=5):
-        super().__init__(id=player_id, seed = seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=self.filmer_toves)
+        super().__init__(id=player_id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=self.filter_moves(seed), filter_random_moves=create_monte_carlo_filter(seed, 10))
 
 
     def choose_resources_to_drop(self) -> Dict[Resource, int]:
@@ -62,40 +62,34 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         return Counter(self._random_choice(resources_to_drop, resources_to_drop_count, replace=False))
 
 
-    def tomer_drops_mic_in_first_phase(self, state):
+    def drop_resources_in_first_phase(self, state):
         return None
 
 
-    def tomer_drops_mic_in_final_phase(self, state):
+    def drop_resources_in_final_phase(self, state):
         return None
-
-
-    def filmer_toves(self, next_moves, state):
-        return []
-
 
 
     def tomeristic(self, state: CatanState):
         # as discussed with Shaul, this isn't zero-sum heuristic, but a max-gain approach where only own player's
         # value is is taken in account
-        print("*************************hi************************************")
         if state.is_initialisation_phase():
-            return self.tomeristic_initialisation_phase(state)
-        if self.tomer_in_first_phase(state):
-            return self.tomeristic_first_phase(state)
-        return self.tomeristic_final_phase(state)
+            return self.heuristic_initialisation_phase(state)
+        if self.in_first_phase(state):
+            return self.heuristic_first_phase(state)
+        return self.heuristic_final_phase(state)
 
 
-    def tomer_in_first_phase(self, state):
+    def in_first_phase(self, state):
         my_victory_points = int(state.get_scores_by_player()[self])
         return my_victory_points <= 7
 
 
-    def tomeristic_initialisation_phase(self, state):
-        pass
+    def heuristic_initialisation_phase(self, state):
+        return self._random_choice([i for i in range(10)])
 
 
-    def tomeristic_first_phase(self, state):
+    def heuristic_first_phase(self, state):
         """
         prefer higher expected resource yield, rather than VP.
         also reward having places to build settlements.
@@ -114,19 +108,19 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         ore_count = self.get_resource_count(Resource.Ore)
 
         # what is our trading ratio for each resource
-        brick_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Brick)
-        lumber_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Lumber)
-        wool_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Wool)
-        grain_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Grain)
-        ore_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Ore)
+        brick_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Brick)
+        lumber_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Lumber)
+        wool_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Wool)
+        grain_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Grain)
+        ore_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Ore)
 
-        resource_expectation = ExpecTomer.get_resource_expectation(self, state)
+        resource_expectation = Winner.get_resource_expectation(self, state)
 
         # the number of unexposed development cards, except for VP dev cards.
         num_dev_cards = sum(self.unexposed_development_cards) - self.unexposed_development_cards[DevelopmentCard.VictoryPoint]
 
-        avg_vp_diff = ExpecTomer.get_avg_vp_difference(scores_by_players, self)
-        max_vp_diff = ExpecTomer.get_max_vp_difference(scores_by_players, self)
+        avg_vp_diff = Winner.get_avg_vp_difference(scores_by_players, self)
+        max_vp_diff = Winner.get_max_vp_difference(scores_by_players, self)
 
         can_build_settlement = 1 if self.can_settle_settlement() else 0
         can_build_city = 1 if self.can_settle_city() else 0
@@ -134,8 +128,8 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
 
         num_places_to_build = len(board.get_settleable_locations_by_player())
 
-        values = np.array([brick_count,lumber_count,wool_count,grain_count,
-                           ore_count,resource_expectation[Resource.Brick],
+        values = np.array([brick_count, lumber_count, wool_count, grain_count,
+                           ore_count, resource_expectation[Resource.Brick],
                            resource_expectation[Resource.Lumber],
                            resource_expectation[Resource.Wool],
                            resource_expectation[Resource.Grain],
@@ -152,7 +146,8 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
 
         return np.sum(values)
 
-    def tomeristic_first_phase_design2(self, state, weights = np.ones(50)):
+
+    def heuristic_first_phase_design2(self, state, weights):
         """
         prefer higher expected resource yield, rather than VP.
         also reward having places to build settlements.
@@ -161,7 +156,7 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         :return: returns a score for this state.
         """
 
-        values = np.zeros(50) # arbitrary number (just has to be large enough)
+        values = np.zeros(50)
 
         board = state.board
         scores_by_players = state.get_scores_by_player()
@@ -175,11 +170,11 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         values[4] = currentResouces(Resource.Ore)
 
         # what is our trading ratio for each resource
-        brick_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Brick)
-        lumber_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Lumber)
-        wool_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Wool)
-        grain_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Grain)
-        ore_trade_ratio = ExpecTomer.calc_player_trade_ratio(self, state, Resource.Ore)
+        brick_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Brick)
+        lumber_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Lumber)
+        wool_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Wool)
+        grain_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Grain)
+        ore_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Ore)
 
         # current resources * trade ratios
         values[5] = currentResouces(Resource.Brick) * (1 / brick_trade_ratio)
@@ -237,17 +232,17 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
 
 
     def tomeristic_final_phase(self, state):
+    def heuristic_final_phase(self, state):
         scores_by_players = state.get_scores_by_player()
         can_build_dev_card = 1 if self.has_resources_for_development_card() else 0
 
-        resource_expectation = ExpecTomer.get_resource_expectation(self,
-                                                                   state)
+        resource_expectation = Winner.get_resource_expectation(self, state)
 
-        return 2 * scores_by_players[self] + 4* can_build_dev_card + sum([resource_expectation[Resource.Brick],
-                           resource_expectation[Resource.Lumber],
-                           resource_expectation[Resource.Wool],
-                           resource_expectation[Resource.Grain],
-                           resource_expectation[Resource.Ore]])
+        return 2 * scores_by_players[self] + 4 * can_build_dev_card + sum([resource_expectation[Resource.Brick],
+                                                                           resource_expectation[Resource.Lumber],
+                                                                           resource_expectation[Resource.Wool],
+                                                                           resource_expectation[Resource.Grain],
+                                                                           resource_expectation[Resource.Ore]])
 
 
     @staticmethod
@@ -266,7 +261,7 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
 
     @staticmethod
     def get_resource_expectation(player, state):
-        #TODO: check that this function works properly
+        # TODO: check that this function works properly
         """
         calculates the expected resource yield per one turn per player.
         :return: a dictionary of the resource expectation of the given player.
@@ -277,7 +272,7 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
 
         for location in state.board.get_locations_colonised_by_player(player):
             colony_yield = res_yield[state.board.get_colony_type_at_location(location)]
-            for land in state.board._roads_and_colonies.node[location][Board.lands]: # the adjacent lands to the location we check
+            for land in state.board._roads_and_colonies.node[location][Board.lands]:  # the adjacent lands to the location we check
                 resources[land.resource] += colony_yield * state.probabilities_by_dice_values[land.dice_value]
 
         return resources
@@ -333,3 +328,55 @@ class ExpecTomer(ExpectimaxBaselinePlayer):
         return max(score_by_player[player] - score_by_player[other] for other in score_by_player.keys if other != player)
 
 
+    def filter_moves(self, seed, branching_factor=3459):
+        a = create_monte_carlo_filter(seed, branching_factor)
+        b = self.filter_out_useless_trades()
+        c = create_bad_robber_placement_filter(self)
+
+        def spaghetti_filter(all_moves, state):
+            return a(b(c(all_moves, state), state), state)
+
+        return spaghetti_filter
+
+
+    def filter_out_useless_trades(self):
+
+        def is_good_move(move, state):
+            num_roads_before_move = self.amount_of_roads_can_afford()
+            num_settlements_before_move = self.amount_of_settlements_can_afford()
+            num_cities_before_move = self.amount_of_cities_can_afford()
+            num_development_cards_before_move = self.amount_of_development_card_can_afford()
+
+            for exchange in move.resources_exchanges:
+                self.trade_resources(exchange.source_resource, exchange.target_resource, exchange.count,
+                                     state._calc_curr_player_trade_ratio(exchange.source_resource))
+
+            num_roads_after_move = self.amount_of_roads_can_afford()
+            num_settlements_after_move = self.amount_of_settlements_can_afford()
+            num_cities_after_move = self.amount_of_cities_can_afford()
+            num_development_cards_after_move = self.amount_of_development_card_can_afford()
+
+            for exchange in move.resources_exchanges:
+                self.un_trade_resources(exchange.source_resource, exchange.target_resource, exchange.count,
+                                        state._calc_curr_player_trade_ratio(exchange.source_resource))
+
+            return num_roads_after_move > num_roads_before_move or \
+                   num_settlements_after_move > num_settlements_before_move or \
+                   num_cities_after_move > num_cities_before_move or \
+                   num_development_cards_after_move > num_development_cards_before_move
+
+
+        def useless_trades_filter(all_moves, state):
+            good_moves = [move for move in all_moves if is_good_move(move, state)]
+            if not good_moves:
+                return all_moves
+            return good_moves
+
+
+        return useless_trades_filter
+
+
+    def amount_of_development_card_can_afford(self):
+        return min(self.resources[Resource.Ore],
+                   self.resources[Resource.Wool],
+                   self.resources[Resource.Grain])
