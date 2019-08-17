@@ -8,6 +8,7 @@ from game.pieces import *
 from game.development_cards import *
 from math import *
 import numpy as np
+from players.filters import *
 
 import copy
 from players.random_player import RandomPlayer
@@ -22,7 +23,7 @@ class Winner(ExpectimaxBaselinePlayer):
 
 
     def __init__(self, player_id, seed=None, timeout_seconds=5):
-        super().__init__(id=player_id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=create_monte_carlo_filter(seed), filter_random_moves=create_monte_carlo_filter(seed, 10))
+        super().__init__(id=player_id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=self.filter_moves(seed), filter_random_moves=create_monte_carlo_filter(seed, 10))
 
 
     def choose_resources_to_drop(self) -> Dict[Resource, int]:
@@ -69,10 +70,6 @@ class Winner(ExpectimaxBaselinePlayer):
         return None
 
 
-    def filter_moves(self, next_moves, state):
-        return next_moves
-
-
     def tomeristic(self, state: CatanState):
         # as discussed with Shaul, this isn't zero-sum heuristic, but a max-gain approach where only own player's
         # value is is taken in account
@@ -89,7 +86,7 @@ class Winner(ExpectimaxBaselinePlayer):
 
 
     def heuristic_initialisation_phase(self, state):
-        pass
+        return self._random_choice([i for i in range(10)])
 
 
     def heuristic_first_phase(self, state):
@@ -215,8 +212,7 @@ class Winner(ExpectimaxBaselinePlayer):
         scores_by_players = state.get_scores_by_player()
         can_build_dev_card = 1 if self.has_resources_for_development_card() else 0
 
-        resource_expectation = Winner.get_resource_expectation(self,
-                                                               state)
+        resource_expectation = Winner.get_resource_expectation(self, state)
 
         return 2 * scores_by_players[self] + 4 * can_build_dev_card + sum([resource_expectation[Resource.Brick],
                                                                            resource_expectation[Resource.Lumber],
@@ -284,3 +280,57 @@ class Winner(ExpectimaxBaselinePlayer):
         :return: the maximal difference between the player's vp, and other players vp.
         """
         return max(score_by_player[player] - score_by_player[other] for other in score_by_player.keys if other != player)
+
+
+    def filter_moves(self, seed, branching_factor=3459):
+        a = create_monte_carlo_filter(seed, branching_factor)
+        b = self.filter_out_useless_trades()
+        c = create_bad_robber_placement_filter(self)
+
+        def spaghetti_filter(all_moves, state):
+            return a(b(c(all_moves, state), state), state)
+
+        return spaghetti_filter
+
+
+    def filter_out_useless_trades(self):
+
+        def is_good_move(move, state):
+            num_roads_before_move = self.amount_of_roads_can_afford()
+            num_settlements_before_move = self.amount_of_settlements_can_afford()
+            num_cities_before_move = self.amount_of_cities_can_afford()
+            num_development_cards_before_move = self.amount_of_development_card_can_afford()
+
+            for exchange in move.resources_exchanges:
+                self.trade_resources(exchange.source_resource, exchange.target_resource, exchange.count,
+                                     state._calc_curr_player_trade_ratio(exchange.source_resource))
+
+            num_roads_after_move = self.amount_of_roads_can_afford()
+            num_settlements_after_move = self.amount_of_settlements_can_afford()
+            num_cities_after_move = self.amount_of_cities_can_afford()
+            num_development_cards_after_move = self.amount_of_development_card_can_afford()
+
+            for exchange in move.resources_exchanges:
+                self.un_trade_resources(exchange.source_resource, exchange.target_resource, exchange.count,
+                                        state._calc_curr_player_trade_ratio(exchange.source_resource))
+
+            return num_roads_after_move > num_roads_before_move or \
+                   num_settlements_after_move > num_settlements_before_move or \
+                   num_cities_after_move > num_cities_before_move or \
+                   num_development_cards_after_move > num_development_cards_before_move
+
+
+        def useless_trades_filter(all_moves, state):
+            good_moves = [move for move in all_moves if is_good_move(move, state)]
+            if not good_moves:
+                return all_moves
+            return good_moves
+
+
+        return useless_trades_filter
+
+
+    def amount_of_development_card_can_afford(self):
+        return min(self.resources[Resource.Ore],
+                   self.resources[Resource.Wool],
+                   self.resources[Resource.Grain])
