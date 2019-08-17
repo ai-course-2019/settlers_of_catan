@@ -13,7 +13,7 @@ import numpy as np
 import copy
 from players.random_player import RandomPlayer
 from collections import Counter
-from players.filters import create_monte_carlo_filter
+from players.filters import *
 
 
 MAX_ITERATIONS = 10
@@ -56,7 +56,11 @@ class Winner(ExpectimaxBaselinePlayer):
             self.add_resources_and_piece_for_road()
 
         else:
-            return RandomPlayer.choose_resources_to_drop(self)
+            if sum(self.resources.values()) < 8:
+                return {}
+            resources = [resource for resource, resource_count in self.resources.items() for _ in range(resource_count)]
+            drop_count = ceil(len(resources) / 2)
+            return Counter(self._random_choice(resources, drop_count, replace=False))
 
         resources_to_drop = [resource for resource, count in resources_to_drop.items() for _ in range(count)]
         return Counter(self._random_choice(resources_to_drop, resources_to_drop_count, replace=False))
@@ -183,7 +187,7 @@ class Winner(ExpectimaxBaselinePlayer):
         values[8] = currentResouces[Resource.Grain] * (1 / grain_trade_ratio)
         values[9] = currentResouces[Resource.Ore] * (1 / ore_trade_ratio)
 
-        resource_expectation = ExpecTomer.get_resource_expectation(self, state)
+        resource_expectation = Winner.get_resource_expectation(self, state)
 
         # resource expectation
         values[10] = resource_expectation[Resource.Brick]
@@ -207,8 +211,8 @@ class Winner(ExpectimaxBaselinePlayer):
         values[21] = sum(self.unexposed_development_cards) - self.unexposed_development_cards[DevelopmentCard.VictoryPoint]
 
         # average and max difference between player's VP, and other's VP. should be with negative weights.
-        values[22] = ExpecTomer.get_avg_vp_difference(scores_by_players, self) # Avg VP diff
-        values[23] = ExpecTomer.get_max_vp_difference(scores_by_players, self) # Max VP diff
+        values[22] = Winner.get_avg_vp_difference(scores_by_players, self) # Avg VP diff
+        values[23] = Winner.get_max_vp_difference(scores_by_players, self) # Max VP diff
 
         values[24] = 1 if self.can_settle_settlement() else 0
         values[25] = 1 if self.can_settle_city() else 0
@@ -231,7 +235,6 @@ class Winner(ExpectimaxBaselinePlayer):
         return np.prod(values, weights)
 
 
-    def tomeristic_final_phase(self, state):
     def heuristic_final_phase(self, state):
         scores_by_players = state.get_scores_by_player()
         can_build_dev_card = 1 if self.has_resources_for_development_card() else 0
