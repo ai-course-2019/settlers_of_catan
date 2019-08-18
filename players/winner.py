@@ -26,6 +26,7 @@ class Winner(ExpectimaxBaselinePlayer):
     def __init__(self, player_id, seed=None, timeout_seconds=5):
         super().__init__(id=player_id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=self.filter_moves(seed), filter_random_moves=create_monte_carlo_filter(seed, 10))
         self.initialize_weights()
+        self._players_and_factors = None
 
 
     def initialize_weights(self):

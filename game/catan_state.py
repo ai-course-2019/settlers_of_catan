@@ -117,6 +117,27 @@ class CatanState(AbstractState):
         moves = self._get_all_possible_development_cards_purchase_count_moves(moves)
         return moves
 
+    def get_random_move(self):
+        if self.is_initialisation_phase():
+            return self._get_initialisation_moves()
+
+        if self.current_dice_number != 7:
+            move = CatanMove(self.board.get_robber_land())
+        else:
+            move = np.random.choice(CatanMove(land) for land in self.board.get_lands_to_place_robber_on())
+
+        player = self.get_current_player()
+        if player.has_unexposed_development_card():
+            move = self.get_random_dev_card_exposure_move(move, player)
+        move = np.random.choice(self._get_all_possible_trade_moves([move]))
+        moves = self._get_all_possible_paths_moves([move])
+        if len(moves) != 0:
+            move = np.random.choice(moves)
+        move = np.random.choice(self._get_all_possible_settlements_moves([move]))
+        move = np.random.choice(self._get_all_possible_cities_moves([move]))
+        move = np.random.choice(self._get_all_possible_development_cards_purchase_count_moves([move]))
+        return move
+
     def make_move(self, move: CatanMove):
         """
         apply move
@@ -354,6 +375,37 @@ class CatanState(AbstractState):
         trades.append([min_resource_only_trade])
         return trades
 
+    def get_random_dev_card_exposure_move(self, move: CatanMove, player) -> CatanMove:
+        dev_card = np.random.choice([card for card, a in player.unexposed_development_cards.items()
+                                     if (card != DevelopmentCard.VictoryPoint and a > 0)])
+        if dev_card == DevelopmentCard.Knight and move.robber_placement_land == self.board.get_robber_land():
+            lands = self.board.get_lands_to_place_robber_on()
+            move.robber_placement_land = self._random_choice(lands[0])
+        elif dev_card == DevelopmentCard.Monopoly:
+            move.monopoly_card = np.random.choice(Resource)
+        elif dev_card == DevelopmentCard.YearOfPlenty:
+            chosen_resources = []
+            for i in range(2):
+                r = np.random.randint(5)
+                if r == 0:
+                    chosen_resources.append(Resource.Brick)
+                elif r == 1:
+                    chosen_resources.append(Resource.Lumber)
+                elif r == 2:
+                    chosen_resources.append(Resource.Wool)
+                elif r == 3:
+                    chosen_resources.append(Resource.Grain)
+                else:
+                    chosen_resources.append(Resource.Ore)
+            if chosen_resources[0] != chosen_resources[1]:  # two different cards
+                move.resources_updates[chosen_resources[0]] = 1
+                move.resources_updates[chosen_resources[1]] = 1
+            else:  # same card twice
+                move.resources_updates[chosen_resources[0]] = 2
+        move.development_card_to_be_exposed = dev_card
+        return move
+
+
     def _get_all_possible_development_cards_exposure_moves(self, moves: List[CatanMove]) -> List[CatanMove]:
         player = self.get_current_player()
         new_moves = []
@@ -386,10 +438,10 @@ class CatanState(AbstractState):
             if move.development_card_to_be_exposed == DevelopmentCard.YearOfPlenty:
                 for two_cards in combinations_with_replacement(Resource, 2):
                     new_move = copy.deepcopy(move)
-                    if two_cards[0] == two_cards[1]:  # same card twice
+                    if two_cards[0] != two_cards[1]:  # two different cards
                         new_move.resources_updates[two_cards[0]] = 1
                         new_move.resources_updates[two_cards[1]] = 1
-                    else:  # two different cards
+                    else:  # same card twice
                         new_move.resources_updates[two_cards[0]] = 2
                     year_of_plenty_applied_moves.append(new_move)
             else:

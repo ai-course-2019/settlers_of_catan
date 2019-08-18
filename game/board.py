@@ -515,7 +515,7 @@ class Board:
         return False
 
     def get_lands_to_place_robber_on(self) -> List[Land]:
-        return [land for land in self._lands if land.identifier != self._robber_land.identifier]
+        return [land for land in self._lands if land is not self._robber_land]
 
     _vertices_rows = [
         [i for i in range(0, 3)],

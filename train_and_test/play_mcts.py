@@ -18,7 +18,7 @@ def scores_changed(state, previous_scores, scores):
 def execute_game(plot_map=True):
     seed = None
     timeout_seconds = 5
-    p0 = MCTSPlayer(0, iterations=10)
+    p0 = MCTSPlayer(0, iterations=100)
     p1 = RandomPlayer(1)
     p2 = RandomPlayer(2)
     p3 = RandomPlayer(3)
