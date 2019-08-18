@@ -9,7 +9,6 @@ from game.development_cards import *
 from math import *
 import numpy as np
 
-
 import copy
 from players.random_player import RandomPlayer
 from collections import Counter
@@ -21,15 +20,14 @@ MAX_ITERATIONS = 10
 
 class Winner(ExpectimaxBaselinePlayer):
 
-
     def __init__(self, player_id, seed=None, timeout_seconds=5):
         super().__init__(id=player_id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=self.filter_moves(seed), filter_random_moves=create_monte_carlo_filter(seed, 10))
 
+        self.expectimax_weights = {Colony.City: 2, Colony.Settlement: 1, Road.Paved: 0.4,
+                                   DevelopmentCard.VictoryPoint: 1, DevelopmentCard.Knight: 2.0 / 3.0}
+
 
     def choose_resources_to_drop(self) -> Dict[Resource, int]:
-        # if self.tomer_in_first_phase(state):
-        #     return self.tomer_drops_mic_in_first_phase(state)
-        # return self.tomer_drops_mic_in_final_phase(state)
         if sum(self.resources.values()) < 8:
             return {}
         resources_count = sum(self.resources.values())
@@ -90,10 +88,10 @@ class Winner(ExpectimaxBaselinePlayer):
 
 
     def heuristic_initialisation_phase(self, state):
-        return self._random_choice([i for i in range(10)])
+        return self.weighted_probabilities_heuristic(state)
 
 
-    def heuristic_first_phase(self, state, weights = np.ones(50)):
+    def heuristic_first_phase(self, state, weights=np.ones(50)):
         """
         prefer higher expected resource yield, rather than VP.
         also reward having places to build settlements.
@@ -103,7 +101,6 @@ class Winner(ExpectimaxBaselinePlayer):
         """
 
         values = np.zeros(50)
-
         board = state.board
         scores_by_players = state.get_scores_by_player()
         currentResouces = self.resources
@@ -146,21 +143,20 @@ class Winner(ExpectimaxBaselinePlayer):
         values[19] = resource_expectation[Resource.Ore] * (1 / ore_trade_ratio)
 
         # total resource expectation
-        values[20] = np.sum(values[i] for i in range(10,15))
-
+        values[20] = np.sum(values[i] for i in range(10, 15))
 
         # the number of unexposed development cards, except for VP dev cards. (num dev cards)
         values[21] = len(self.unexposed_development_cards) - self.unexposed_development_cards[DevelopmentCard.VictoryPoint]
 
         # average and max difference between player's VP, and other's VP. should be with negative weights.
-        values[22] = Winner.get_avg_vp_difference(scores_by_players, self) # Avg VP diff
-        values[23] = Winner.get_max_vp_difference(scores_by_players, self) # Max VP diff
+        values[22] = Winner.get_avg_vp_difference(scores_by_players, self)  # Avg VP diff
+        values[23] = Winner.get_max_vp_difference(scores_by_players, self)  # Max VP diff
 
         values[24] = 1 if self.can_settle_settlement() else 0
         values[25] = 1 if self.can_settle_city() else 0
         values[26] = 1 if self.has_resources_for_development_card() else 0
 
-        values[27] = len(board.get_settleable_locations_by_player(self)) # number of places we could build a settlement
+        values[27] = len(board.get_settleable_locations_by_player(self))  # number of places we could build a settlement
 
         # estimate how many turns it would take to get the resources for a road, settlement, city or dev card.
         values[28] = self.get_turns_till_piece(currentResouces, resource_expectation, ResourceAmounts.road)
@@ -217,14 +213,13 @@ class Winner(ExpectimaxBaselinePlayer):
 
         for location in state.board.get_locations_colonised_by_player(player):
             colony_yield = res_yield[state.board.get_colony_type_at_location(location)]
-            for land in state.board._roads_and_colonies.node[location][Board.lands]:  # the adjacent lands to the location we check
-                if land.resource == None: #if this is a desert - do nothing
+            for land in state.board._roads_and_colonies.node[location][Board.lands]:  # The adjacent lands to the location we check
+                if land.resource is None:  # If this is a desert - do nothing
                     continue
                 calc = colony_yield * state.probabilities_by_dice_values[land.dice_value]
                 resources[land.resource] += calc
 
         return resources
-
 
 
     @staticmethod
@@ -241,13 +236,14 @@ class Winner(ExpectimaxBaselinePlayer):
 
         for r in Resource:
             needed_amount = requiredResourcesForPiece[r] - currentResources[r]
-            if needed_amount > 0: # if we have the resource (in the right amount) - we are good. nothing to do
+            if needed_amount > 0:  # if we have the resource (in the right amount) - we are good. nothing to do
                 if resourceExpectation[r] == 0:
-                    num_turns += 4 / max(resourceExpectation.values()) #TODO: change to calc trade ratio for that resource
+                    num_turns += 4 / max(resourceExpectation.values())  # TODO: change to calc trade ratio for that resource
                     continue
                 num_turns = max(num_turns, ceil(needed_amount / resourceExpectation[r]))
 
         return num_turns
+
 
     @staticmethod
     def get_avg_vp_difference(score_by_players, player):
@@ -272,8 +268,10 @@ class Winner(ExpectimaxBaselinePlayer):
         b = self.filter_out_useless_trades()
         c = create_bad_robber_placement_filter(self)
 
+
         def spaghetti_filter(all_moves, state):
             return a(b(c(all_moves, state), state), state)
+
 
         return spaghetti_filter
 
@@ -319,3 +317,27 @@ class Winner(ExpectimaxBaselinePlayer):
         return min(self.resources[Resource.Ore],
                    self.resources[Resource.Wool],
                    self.resources[Resource.Grain])
+
+
+    def weighted_probabilities_heuristic(self, s: CatanState):
+        # TODO: fix a little
+        if self._players_and_factors is None:
+            self._players_and_factors = [(self, len(s.players) - 1)] + [(p, -1) for p in s.players if p is not self]
+
+        score = 0
+        # noinspection PyTypeChecker
+        for player, factor in self._players_and_factors:
+            for location in s.board.get_locations_colonised_by_player(player):
+                weight = self.expectimax_weights[s.board.get_colony_type_at_location(location)]
+                for dice_value in s.board.get_surrounding_dice_values(location):
+                    score += s.probabilities_by_dice_values[dice_value] * weight * factor
+
+            for road in s.board.get_roads_paved_by_player(player):
+                weight = self.expectimax_weights[Road.Paved]
+                for dice_value in s.board.get_adjacent_to_path_dice_values(road):
+                    score += s.probabilities_by_dice_values[dice_value] * weight * factor
+
+            for development_card in {DevelopmentCard.VictoryPoint, DevelopmentCard.Knight}:
+                weight = self.expectimax_weights[development_card]
+                score += self.get_unexposed_development_cards()[development_card] * weight * factor
+        return score
