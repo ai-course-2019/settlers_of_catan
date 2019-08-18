@@ -55,9 +55,6 @@ def execute_game(plot_map=True):
 
     turn_count = 0
     score_by_player = state.get_scores_by_player_indexed()
-    if plot_map:
-        state.board.plot_map('turn_{}_scores_{}.png'
-                             .format(turn_count, ''.join('{}_'.format(v) for v in score_by_player.values())))
 
     while not state.is_final():
         # noinspection PyProtectedMember
@@ -87,8 +84,10 @@ def execute_game(plot_map=True):
         isinstance(v, ExpectimaxBaselinePlayer)) else None): score_by_player[v.get_id()]
                                for k, v in locals().items() if v in players
                                }
-    fileLogger.info('\n' + '\n'.join(' {:80} : {} '.format(str(name), score)
-                                     for name, score in players_scores_by_names.items()) +
+    names = list(players_scores_by_names.keys())
+    names.sort()
+    fileLogger.info('\n' + '\n'.join(' {:80} : {} '.format(str(name), players_scores_by_names[name])
+                                     for name in names) +
                     '\n turns it took: {}\n'.format(turn_count) + ('-' * 156))
 
     p0_type = type(p0).__name__
