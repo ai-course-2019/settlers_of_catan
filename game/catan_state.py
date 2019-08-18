@@ -386,10 +386,10 @@ class CatanState(AbstractState):
             if move.development_card_to_be_exposed == DevelopmentCard.YearOfPlenty:
                 for two_cards in combinations_with_replacement(Resource, 2):
                     new_move = copy.deepcopy(move)
-                    if two_cards[0] == two_cards[1]:  # same card twice
+                    if two_cards[0] != two_cards[1]:  # two different cards
                         new_move.resources_updates[two_cards[0]] = 1
                         new_move.resources_updates[two_cards[1]] = 1
-                    else:  # two different cards
+                    else:  # same card twice
                         new_move.resources_updates[two_cards[0]] = 2
                     year_of_plenty_applied_moves.append(new_move)
             else:
