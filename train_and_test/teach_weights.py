@@ -23,8 +23,8 @@ class WeightsSpace(AbstractHillClimbableSpace):
         self._time_seconds = 1
         self.iterations_count = 0
         self._max_iterations = 20
-        self._games_per_iteration = 3
-        self.delta_unit = 3
+        self._games_per_iteration = 10
+        self.delta_unit = 5
         self._epsilon_is_weighting_better = 50
 
     def evaluate_state(self, weights) -> AbstractHillClimbingStateEvaluation:
@@ -68,6 +68,7 @@ class WeightsSpace(AbstractHillClimbableSpace):
         logger.info('| done iteration {}. scores: {}'
                     .format(args.i_, {'p0  (new weights)': scores[p0], 'p1': scores[p1], 'p2': scores[p2], 'p3': scores[p3]}))
 
+        # TODO: change this block
         count_moves_factor = 1 * count_moves
         p0_factor = 10000 if (scores[p0] >= 10) else 0
         p_others_factor = (sum(scores.values()) - scores[p0]) * 0.2
@@ -77,6 +78,7 @@ class WeightsSpace(AbstractHillClimbableSpace):
         return res
 
     def get_neighbors(self, weights):
+        self.iterations_count += 1
         next_weights = copy.deepcopy(weights)
         unit_fraction = self.delta_unit / len(weights)
         next_weights -= unit_fraction
