@@ -93,65 +93,7 @@ class Winner(ExpectimaxBaselinePlayer):
         return self._random_choice([i for i in range(10)])
 
 
-    def heuristic_first_phase(self, state):
-        """
-        prefer higher expected resource yield, rather than VP.
-        also reward having places to build settlements.
-        :param state: the current state of the game.
-        :param player: our player.
-        :return: returns a score for this state.
-        """
-        board = state.board
-        scores_by_players = state.get_scores_by_player()
-
-        # how many cards of each resource we have right now
-        brick_count = self.get_resource_count(Resource.Brick)
-        lumber_count = self.get_resource_count(Resource.Lumber)
-        wool_count = self.get_resource_count(Resource.Wool)
-        grain_count = self.get_resource_count(Resource.Grain)
-        ore_count = self.get_resource_count(Resource.Ore)
-
-        # what is our trading ratio for each resource
-        brick_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Brick)
-        lumber_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Lumber)
-        wool_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Wool)
-        grain_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Grain)
-        ore_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Ore)
-
-        resource_expectation = Winner.get_resource_expectation(self, state)
-
-        # the number of unexposed development cards, except for VP dev cards.
-        num_dev_cards = sum(self.unexposed_development_cards) - self.unexposed_development_cards[DevelopmentCard.VictoryPoint]
-
-        avg_vp_diff = Winner.get_avg_vp_difference(scores_by_players, self)
-        max_vp_diff = Winner.get_max_vp_difference(scores_by_players, self)
-
-        can_build_settlement = 1 if self.can_settle_settlement() else 0
-        can_build_city = 1 if self.can_settle_city() else 0
-        can_build_dev_card = 1 if self.has_resources_for_development_card() else 0
-
-        num_places_to_build = len(board.get_settleable_locations_by_player())
-
-        values = np.array([brick_count, lumber_count, wool_count, grain_count,
-                           ore_count, resource_expectation[Resource.Brick],
-                           resource_expectation[Resource.Lumber],
-                           resource_expectation[Resource.Wool],
-                           resource_expectation[Resource.Grain],
-                           resource_expectation[Resource.Ore],
-                           resource_expectation[Resource.Brick] * (1 / brick_trade_ratio),
-                           resource_expectation[Resource.Lumber] * (1 / lumber_trade_ratio),
-                           resource_expectation[Resource.Wool] * (1 / wool_trade_ratio),
-                           resource_expectation[Resource.Grain] * (1 / grain_trade_ratio),
-                           resource_expectation[Resource.Ore] * (1 / ore_trade_ratio),
-                           num_dev_cards, - avg_vp_diff, - max_vp_diff,
-                           scores_by_players[self],
-                           can_build_settlement, can_build_city,
-                           can_build_dev_card, num_places_to_build])
-
-        return np.sum(values)
-
-
-    def heuristic_first_phase_design2(self, state, weights):
+    def heuristic_first_phase(self, state, weights = np.ones(50)):
         """
         prefer higher expected resource yield, rather than VP.
         also reward having places to build settlements.
@@ -167,11 +109,11 @@ class Winner(ExpectimaxBaselinePlayer):
         currentResouces = self.resources
 
         # how many cards of each resource we have right now
-        values[0] = currentResouces(Resource.Brick)
-        values[1] = currentResouces(Resource.Lumber)
-        values[2] = currentResouces(Resource.Wool)
-        values[3] = currentResouces(Resource.Grain)
-        values[4] = currentResouces(Resource.Ore)
+        values[0] = currentResouces[Resource.Brick]
+        values[1] = currentResouces[Resource.Lumber]
+        values[2] = currentResouces[Resource.Wool]
+        values[3] = currentResouces[Resource.Grain]
+        values[4] = currentResouces[Resource.Ore]
 
         # what is our trading ratio for each resource
         brick_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Brick)
@@ -181,7 +123,7 @@ class Winner(ExpectimaxBaselinePlayer):
         ore_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Ore)
 
         # current resources * trade ratios
-        values[5] = currentResouces(Resource.Brick) * (1 / brick_trade_ratio)
+        values[5] = currentResouces[Resource.Brick] * (1 / brick_trade_ratio)
         values[6] = currentResouces[Resource.Lumber] * (1 / lumber_trade_ratio)
         values[7] = currentResouces[Resource.Wool] * (1 / wool_trade_ratio)
         values[8] = currentResouces[Resource.Grain] * (1 / grain_trade_ratio)
@@ -204,11 +146,11 @@ class Winner(ExpectimaxBaselinePlayer):
         values[19] = resource_expectation[Resource.Ore] * (1 / ore_trade_ratio)
 
         # total resource expectation
-        values[20] = np.sum(values[10,14])
+        values[20] = np.sum(values[i] for i in range(10,15))
 
 
         # the number of unexposed development cards, except for VP dev cards. (num dev cards)
-        values[21] = sum(self.unexposed_development_cards) - self.unexposed_development_cards[DevelopmentCard.VictoryPoint]
+        values[21] = len(self.unexposed_development_cards) - self.unexposed_development_cards[DevelopmentCard.VictoryPoint]
 
         # average and max difference between player's VP, and other's VP. should be with negative weights.
         values[22] = Winner.get_avg_vp_difference(scores_by_players, self) # Avg VP diff
@@ -218,7 +160,7 @@ class Winner(ExpectimaxBaselinePlayer):
         values[25] = 1 if self.can_settle_city() else 0
         values[26] = 1 if self.has_resources_for_development_card() else 0
 
-        values[27] = len(board.get_settleable_locations_by_player()) # number of places we could build a settlement
+        values[27] = len(board.get_settleable_locations_by_player(self)) # number of places we could build a settlement
 
         # estimate how many turns it would take to get the resources for a road, settlement, city or dev card.
         values[28] = self.get_turns_till_piece(currentResouces, resource_expectation, ResourceAmounts.road)
@@ -232,7 +174,7 @@ class Winner(ExpectimaxBaselinePlayer):
                                                resource_expectation,
                                                ResourceAmounts.development_card)
 
-        return np.prod(values, weights)
+        return np.dot(values, weights)
 
 
     def heuristic_final_phase(self, state):
@@ -276,21 +218,13 @@ class Winner(ExpectimaxBaselinePlayer):
         for location in state.board.get_locations_colonised_by_player(player):
             colony_yield = res_yield[state.board.get_colony_type_at_location(location)]
             for land in state.board._roads_and_colonies.node[location][Board.lands]:  # the adjacent lands to the location we check
-                resources[land.resource] += colony_yield * state.probabilities_by_dice_values[land.dice_value]
+                if land.resource == None: #if this is a desert - do nothing
+                    continue
+                calc = colony_yield * state.probabilities_by_dice_values[land.dice_value]
+                resources[land.resource] += calc
 
         return resources
 
-
-        # for player, factor in self._players_and_factors:
-        #     for location in s.board.get_locations_colonised_by_player(player):
-        #         weight = self.weights[s.board.get_colony_type_at_location(location)]
-        #         for dice_value in s.board.get_surrounding_dice_values(location):
-        #             score += s.probabilities_by_dice_values[dice_value] * weight * factor
-
-
-        # return [land.resource for land in
-        #         self._roads_and_colonies.node[location][Board.lands]
-        #         if land.resource is not None]
 
 
     @staticmethod
@@ -309,7 +243,7 @@ class Winner(ExpectimaxBaselinePlayer):
             needed_amount = requiredResourcesForPiece[r] - currentResources[r]
             if needed_amount > 0: # if we have the resource (in the right amount) - we are good. nothing to do
                 if resourceExpectation[r] == 0:
-                    num_turns += 4 / max(resourceExpectation)
+                    num_turns += 4 / max(resourceExpectation.values()) #TODO: change to calc trade ratio for that resource
                     continue
                 num_turns = max(num_turns, ceil(needed_amount / resourceExpectation[r]))
 
@@ -320,7 +254,9 @@ class Winner(ExpectimaxBaselinePlayer):
         """
         :return: the average difference between the player's vp, and other players vp.
         """
-        return sum(score_by_players[player] - score_by_players[other] for other in score_by_players.keys if other != player) / len(score_by_players)
+        # vp__diff_sum = 0
+        # for other in score_by_players.keys()
+        return sum((score_by_players[player] - score_by_players[other]) for other in score_by_players.keys() if other != player) / (len(score_by_players) - 1)
 
 
     @staticmethod
@@ -328,7 +264,7 @@ class Winner(ExpectimaxBaselinePlayer):
         """
         :return: the maximal difference between the player's vp, and other players vp.
         """
-        return max(score_by_player[player] - score_by_player[other] for other in score_by_player.keys if other != player)
+        return max((score_by_player[player] - score_by_player[other]) for other in score_by_player.keys() if other != player)
 
 
     def filter_moves(self, seed, branching_factor=3459):
