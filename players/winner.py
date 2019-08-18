@@ -27,6 +27,7 @@ class Winner(ExpectimaxBaselinePlayer):
         super().__init__(id=player_id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=self.filter_moves(seed), filter_random_moves=create_monte_carlo_filter(seed, 10))
         self.initialize_weights()
 
+
     def initialize_weights(self):
         # heavy weights for resource expectation
         for i in range(10, 20):
