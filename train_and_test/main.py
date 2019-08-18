@@ -132,5 +132,10 @@ def run_single_game_and_plot_map():
     execute_game(plot_map=False)
 
 
+def run_n_games(n):
+    for i in range(n):
+        execute_game(plot_map=False)
+
+
 if __name__ == '__main__':
-    run_single_game_and_plot_map()
+    run_n_games(10)
