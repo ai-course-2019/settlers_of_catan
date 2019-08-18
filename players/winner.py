@@ -21,9 +21,21 @@ MAX_ITERATIONS = 10
 
 class Winner(ExpectimaxBaselinePlayer):
 
+    weights = np.ones(50)
+
 
     def __init__(self, player_id, seed=None, timeout_seconds=5):
         super().__init__(id=player_id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=self.filter_moves(seed), filter_random_moves=create_monte_carlo_filter(seed, 10))
+        self.initialize_weights()
+
+    def initialize_weights(self):
+        # heavy weights for resource expectation
+        for i in range(10, 20):
+            self.weights[i] = 100
+
+        # lights weights for turns to get resources for specific pieces.
+        for i in range(28,32):
+            self.weights[i] = 0.1
 
 
     def choose_resources_to_drop(self) -> Dict[Resource, int]:
@@ -76,7 +88,7 @@ class Winner(ExpectimaxBaselinePlayer):
         if state.is_initialisation_phase():
             return self.heuristic_initialisation_phase(state)
         if self.in_first_phase(state):
-            return self.heuristic_first_phase(state)
+            return self.heuristic_first_phase(state, self.weights)
         return self.heuristic_final_phase(state)
 
 
@@ -170,7 +182,8 @@ class Winner(ExpectimaxBaselinePlayer):
                                                resource_expectation,
                                                ResourceAmounts.development_card)
 
-        return np.dot(values, weights)
+        result = np.dot(values, weights)
+        return result
 
 
     def heuristic_final_phase(self, state):
