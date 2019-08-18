@@ -20,30 +20,35 @@ MAX_ITERATIONS = 10
 
 class Winner(ExpectimaxBaselinePlayer):
 
-    weights = np.ones(50)
+    winner_weights = np.ones(50)
+    final_phase_weights = np.ones(50)
+    initialization_phase_weights = np.ones(50)
 
 
-    def __init__(self, player_id, seed=None, timeout_seconds=5):
-        super().__init__(id=player_id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=self.filter_moves(seed), filter_random_moves=create_monte_carlo_filter(seed, 10))
+    def __init__(self, id, seed=None, timeout_seconds=5, weights = winner_weights):
+        super().__init__(id=id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=self.filter_moves(seed), filter_random_moves=create_monte_carlo_filter(seed, 10))
 
         self.scores_by_player = None
         self._players_and_factors = None
         self.initialize_weights()
 
+    default_weights = np.array([1,1,1,1,1,1,1,1,1,1, 100,100,100,100,100,100,100,100,100,100, 1, 0, 1,1,1,1,1,1,-0.1,-0.1,-0.1,-0.1])
 
     def initialize_weights(self):
         for i in range(10):
-            self.weights[i] = 0
+            self.winner_weights[i] = 0
 
         # heavy weights for resource expectation
         for i in range(10, 20):
-            self.weights[i] = 100
+            self.winner_weights[i] = 100
 
-        self.weights[21] = 0
+        self.winner_weights[21] = 0
 
         # light (negative) weights for turns to get resources for specific pieces.
         for i in range(28,32):
-            self.weights[i] = -0.1
+            self.winner_weights[i] = -0.1
+
+
 
         self.expectimax_weights = {Colony.City: 2, Colony.Settlement: 1, Road.Paved: 0.4,
                                    DevelopmentCard.VictoryPoint: 1, DevelopmentCard.Knight: 2.0 / 3.0}
@@ -90,7 +95,8 @@ class Winner(ExpectimaxBaselinePlayer):
             resources_count -= resources_for_development_card
             development_cards_removed += 1
 
-        resources_to_drop = Counter(self._random_choice(self.resources, resources_to_drop_count, replace=False))
+        possible_resources_to_drop = [resource for resource, amount in self.resources.items() for i in range(amount)]
+        resources_to_drop = Counter(self._random_choice(possible_resources_to_drop, resources_to_drop_count, replace=False))
 
         for i in range(cities_removed):
             self.add_resources_and_piece_for_city()
@@ -139,7 +145,8 @@ class Winner(ExpectimaxBaselinePlayer):
             resources_count -= resources_for_road
             roads_removed += 1
 
-        resources_to_drop = Counter(self._random_choice(self.resources, resources_to_drop_count, replace=False))
+        possible_resources_to_drop = [resource for resource, amount in self.resources.items() for i in range(amount)]
+        resources_to_drop = Counter(self._random_choice(possible_resources_to_drop, resources_to_drop_count, replace=False))
 
         for i in range(cities_removed):
             self.add_resources_and_piece_for_city()
@@ -158,7 +165,7 @@ class Winner(ExpectimaxBaselinePlayer):
         # as discussed with Shaul, this isn't zero-sum heuristic, but a max-gain approach where only own player's
         # value is is taken in account
         self.scores_by_player = state.get_scores_by_player_indexed()
-        my_score = self.scores_by_player[self]
+        my_score = self.scores_by_player[self.get_id()]
         if my_score >= 10:
             return inf
         max_score = max(self.scores_by_player)
@@ -167,18 +174,21 @@ class Winner(ExpectimaxBaselinePlayer):
         if state.is_initialisation_phase():
             return self.heuristic_initialisation_phase(state)
         if self.in_first_phase(state):
-            return self.heuristic_first_phase(state, self.weights)
-        return self.heuristic_final_phase(state)
+            return self.heuristic_first_phase(state, self.winner_weights)
+
+
+        return self.heuristic_first_phase(state, self.final_phase_weights)
+        # return self.heuristic_final_phase(state)
 
 
     def in_first_phase(self, state=None):
-        my_victory_points = self.scores_by_player[self]
+        my_victory_points = self.scores_by_player[self.get_id()]
         return my_victory_points <= 7
 
 
     def heuristic_initialisation_phase(self, state):
-        return sum(self.get_resource_expectation(self, state))
-        # return self.weighted_probabilities_heuristic(state)
+        #return sum(self.get_resource_expectation(self, state).values())
+        return self.weighted_probabilities_heuristic(state)
 
 
     def heuristic_first_phase(self, state, weights=np.ones(50)):
@@ -262,6 +272,8 @@ class Winner(ExpectimaxBaselinePlayer):
 
         values[32] = scores_by_players[self]
 
+        values[33] = self.weighted_probabilities_heuristic(state)
+
         values = np.multiply(values, weights)
 
         return np.dot(values, weights)
@@ -273,11 +285,13 @@ class Winner(ExpectimaxBaselinePlayer):
 
         resource_expectation = Winner.get_resource_expectation(self, state)
 
-        return 2 * scores_by_players[self] + 4 * can_build_dev_card + sum([resource_expectation[Resource.Brick],
-                                                                           resource_expectation[Resource.Lumber],
-                                                                           resource_expectation[Resource.Wool],
-                                                                           resource_expectation[Resource.Grain],
-                                                                           resource_expectation[Resource.Ore]])
+        return scores_by_players[self]
+
+        # return 2 * scores_by_players[self] + 4 * can_build_dev_card + sum([resource_expectation[Resource.Brick],
+        #                                                                    resource_expectation[Resource.Lumber],
+        #                                                                    resource_expectation[Resource.Wool],
+        #                                                                    resource_expectation[Resource.Grain],
+        #                                                                    resource_expectation[Resource.Ore]])
 
 
     @staticmethod
