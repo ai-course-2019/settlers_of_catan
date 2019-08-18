@@ -25,6 +25,8 @@ class Winner(ExpectimaxBaselinePlayer):
 
     def __init__(self, player_id, seed=None, timeout_seconds=5):
         super().__init__(id=player_id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=self.filter_moves(seed), filter_random_moves=create_monte_carlo_filter(seed, 10))
+
+        self.scores_by_player = None
         self._players_and_factors = None
         self.initialize_weights()
 
@@ -39,7 +41,7 @@ class Winner(ExpectimaxBaselinePlayer):
 
         self.weights[21] = 0
 
-        # lights weights for turns to get resources for specific pieces.
+        # light (negative) weights for turns to get resources for specific pieces.
         for i in range(28,32):
             self.weights[i] = -0.1
 
@@ -48,53 +50,120 @@ class Winner(ExpectimaxBaselinePlayer):
 
 
     def choose_resources_to_drop(self) -> Dict[Resource, int]:
-        if sum(self.resources.values()) < 8:
-            return {}
+        if self.in_first_phase():
+            return self.drop_resources_in_first_phase()
+        return self.drop_resources_in_final_phase()
+
+
+    def drop_resources_in_first_phase(self):
         resources_count = sum(self.resources.values())
+        if resources_count < 8:
+            return {}
         resources_to_drop_count = ceil(resources_count / 2)
-        if self.can_settle_city() and resources_count >= sum(ResourceAmounts.city.values()) * 2:
+
+        resources_for_city = sum(ResourceAmounts.city.values())
+        cities_removed = 0
+        while self.can_settle_city() and resources_count >= resources_to_drop_count + resources_for_city:
             self.remove_resources_and_piece_for_city()
-            resources_to_drop = copy.deepcopy(self.resources)
-            self.add_resources_and_piece_for_city()
+            resources_count -= resources_for_city
+            cities_removed += 1
 
-        elif self.can_settle_settlement() and resources_count >= sum(ResourceAmounts.settlement.values()) * 2:
+        resources_for_settlement = sum(ResourceAmounts.settlement.values())
+        settlements_removed = 0
+        while self.can_settle_settlement() and resources_count >= resources_to_drop_count + resources_for_settlement:
             self.remove_resources_and_piece_for_settlement()
-            resources_to_drop = copy.deepcopy(self.resources)
-            self.add_resources_and_piece_for_settlement()
+            resources_count -= resources_for_city
+            settlements_removed += 1
 
-        elif (self.has_resources_for_development_card() and
-              resources_count >= sum(ResourceAmounts.development_card.values()) * 2):
-            self.remove_resources_for_development_card()
-            resources_to_drop = copy.deepcopy(self.resources)
-            self.add_resources_for_development_card()
-
-        elif self.can_pave_road() and resources_count >= sum(ResourceAmounts.road.values()) * 2:
+        resources_for_road = sum(ResourceAmounts.road.values())
+        roads_removed = 0
+        while self.can_pave_road() and resources_count >= resources_to_drop_count + resources_for_road:
             self.remove_resources_and_piece_for_road()
-            resources_to_drop = copy.deepcopy(self.resources)
+            resources_count -= resources_for_road
+            roads_removed += 1
+
+        resources_for_development_card = sum(ResourceAmounts.development_card.values())
+        development_cards_removed = 0
+        while self.has_resources_for_development_card() and \
+                resources_count >= resources_to_drop_count + resources_for_development_card:
+            self.remove_resources_for_development_card()
+            resources_count -= resources_for_development_card
+            development_cards_removed += 1
+
+        resources_to_drop = Counter(self._random_choice(self.resources, resources_to_drop_count, replace=False))
+
+        for i in range(cities_removed):
+            self.add_resources_and_piece_for_city()
+        for i in range(settlements_removed):
+            self.add_resources_and_piece_for_settlement()
+        for i in range(development_cards_removed):
+            self.add_resources_for_development_card()
+        for i in range(roads_removed):
             self.add_resources_and_piece_for_road()
 
-        else:
-            if sum(self.resources.values()) < 8:
-                return {}
-            resources = [resource for resource, resource_count in self.resources.items() for _ in range(resource_count)]
-            drop_count = ceil(len(resources) / 2)
-            return Counter(self._random_choice(resources, drop_count, replace=False))
-
-        resources_to_drop = [resource for resource, count in resources_to_drop.items() for _ in range(count)]
-        return Counter(self._random_choice(resources_to_drop, resources_to_drop_count, replace=False))
+        return resources_to_drop
 
 
-    def drop_resources_in_first_phase(self, state):
-        return None
+    def drop_resources_in_final_phase(self):
+        resources_count = sum(self.resources.values())
+        if resources_count < 8:
+            return {}
+        resources_to_drop_count = ceil(resources_count / 2)
 
+        resources_for_city = sum(ResourceAmounts.city.values())
+        cities_removed = 0
+        while self.can_settle_city() and resources_count >= resources_to_drop_count + resources_for_city:
+            self.remove_resources_and_piece_for_city()
+            resources_count -= resources_for_city
+            cities_removed += 1
 
-    def drop_resources_in_final_phase(self, state):
-        return None
+        resources_for_settlement = sum(ResourceAmounts.settlement.values())
+        settlements_removed = 0
+        while self.can_settle_settlement() and resources_count >= resources_to_drop_count + resources_for_settlement:
+            self.remove_resources_and_piece_for_settlement()
+            resources_count -= resources_for_city
+            settlements_removed += 1
+
+        resources_for_development_card = sum(ResourceAmounts.development_card.values())
+        development_cards_removed = 0
+        while self.has_resources_for_development_card() and \
+                resources_count >= resources_to_drop_count + resources_for_development_card:
+            self.remove_resources_for_development_card()
+            resources_count -= resources_for_development_card
+            development_cards_removed += 1
+
+        resources_for_road = sum(ResourceAmounts.road.values())
+        roads_removed = 0
+        while self.can_pave_road() and resources_count >= resources_to_drop_count + resources_for_road:
+            self.remove_resources_and_piece_for_road()
+            resources_count -= resources_for_road
+            roads_removed += 1
+
+        resources_to_drop = Counter(self._random_choice(self.resources, resources_to_drop_count, replace=False))
+
+        for i in range(cities_removed):
+            self.add_resources_and_piece_for_city()
+        for i in range(settlements_removed):
+            self.add_resources_and_piece_for_settlement()
+        for i in range(development_cards_removed):
+            self.add_resources_for_development_card()
+        for i in range(roads_removed):
+            self.add_resources_and_piece_for_road()
+
+        return resources_to_drop
+
 
 
     def tomeristic(self, state: CatanState):
         # as discussed with Shaul, this isn't zero-sum heuristic, but a max-gain approach where only own player's
         # value is is taken in account
+        self.scores_by_player = state.get_scores_by_player_indexed()
+        my_score = self.scores_by_player[self]
+        if my_score >= 10:
+            return inf
+        max_score = max(self.scores_by_player)
+        if max_score >= 10:
+            return -inf
         if state.is_initialisation_phase():
             return self.heuristic_initialisation_phase(state)
         if self.in_first_phase(state):
@@ -102,25 +171,14 @@ class Winner(ExpectimaxBaselinePlayer):
         return self.heuristic_final_phase(state)
 
 
-    def in_first_phase(self, state):
-        my_victory_points = int(state.get_scores_by_player()[self])
+    def in_first_phase(self, state=None):
+        my_victory_points = self.scores_by_player[self]
         return my_victory_points <= 7
 
 
     def heuristic_initialisation_phase(self, state):
-
-        #FOR DEBUG
-        resource_expectation = self.get_resource_expectation(self,state)
-        calc = sum(self.get_resource_expectation(self,state).values())
-        location = state.board.get_locations_colonised_by_player(self)[0]
-        lands = [land for land in state.board._roads_and_colonies.node[location][Board.lands]]
-
-        debug_point = 0
-        return calc
-        #TILL HERE
-
-        #return sum(self.get_resource_expectation(self,state).values())
-        #return self.weighted_probabilities_heuristic(state)
+        return sum(self.get_resource_expectation(self, state))
+        # return self.weighted_probabilities_heuristic(state)
 
 
     def heuristic_first_phase(self, state, weights=np.ones(50)):
