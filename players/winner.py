@@ -25,17 +25,23 @@ class Winner(ExpectimaxBaselinePlayer):
 
     def __init__(self, player_id, seed=None, timeout_seconds=5):
         super().__init__(id=player_id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=self.filter_moves(seed), filter_random_moves=create_monte_carlo_filter(seed, 10))
+        self._players_and_factors = None
         self.initialize_weights()
 
 
     def initialize_weights(self):
+        for i in range(10):
+            self.weights[i] = 0
+
         # heavy weights for resource expectation
         for i in range(10, 20):
             self.weights[i] = 100
 
+        self.weights[21] = 0
+
         # lights weights for turns to get resources for specific pieces.
         for i in range(28,32):
-            self.weights[i] = 0.1
+            self.weights[i] = -0.1
 
         self.expectimax_weights = {Colony.City: 2, Colony.Settlement: 1, Road.Paved: 0.4,
                                    DevelopmentCard.VictoryPoint: 1, DevelopmentCard.Knight: 2.0 / 3.0}
@@ -102,7 +108,19 @@ class Winner(ExpectimaxBaselinePlayer):
 
 
     def heuristic_initialisation_phase(self, state):
-        return self.weighted_probabilities_heuristic(state)
+
+        #FOR DEBUG
+        resource_expectation = self.get_resource_expectation(self,state)
+        calc = sum(self.get_resource_expectation(self,state).values())
+        location = state.board.get_locations_colonised_by_player(self)[0]
+        lands = [land for land in state.board._roads_and_colonies.node[location][Board.lands]]
+
+        debug_point = 0
+        return calc
+        #TILL HERE
+
+        #return sum(self.get_resource_expectation(self,state).values())
+        #return self.weighted_probabilities_heuristic(state)
 
 
     def heuristic_first_phase(self, state, weights=np.ones(50)):
@@ -183,6 +201,10 @@ class Winner(ExpectimaxBaselinePlayer):
         values[31] = self.get_turns_till_piece(currentResouces,
                                                resource_expectation,
                                                ResourceAmounts.development_card)
+
+        values[32] = scores_by_players[self]
+
+        values = np.multiply(values, weights)
 
         return np.dot(values, weights)
 
