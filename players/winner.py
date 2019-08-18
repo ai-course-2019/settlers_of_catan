@@ -105,11 +105,11 @@ class Winner(ExpectimaxBaselinePlayer):
         currentResouces = self.resources
 
         # how many cards of each resource we have right now
-        values[0] = currentResouces(Resource.Brick)
-        values[1] = currentResouces(Resource.Lumber)
-        values[2] = currentResouces(Resource.Wool)
-        values[3] = currentResouces(Resource.Grain)
-        values[4] = currentResouces(Resource.Ore)
+        values[0] = currentResouces[Resource.Brick]
+        values[1] = currentResouces[Resource.Lumber]
+        values[2] = currentResouces[Resource.Wool]
+        values[3] = currentResouces[Resource.Grain]
+        values[4] = currentResouces[Resource.Ore]
 
         # what is our trading ratio for each resource
         brick_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Brick)
@@ -119,7 +119,7 @@ class Winner(ExpectimaxBaselinePlayer):
         ore_trade_ratio = Winner.calc_player_trade_ratio(self, state, Resource.Ore)
 
         # current resources * trade ratios
-        values[5] = currentResouces(Resource.Brick) * (1 / brick_trade_ratio)
+        values[5] = currentResouces[Resource.Brick] * (1 / brick_trade_ratio)
         values[6] = currentResouces[Resource.Lumber] * (1 / lumber_trade_ratio)
         values[7] = currentResouces[Resource.Wool] * (1 / wool_trade_ratio)
         values[8] = currentResouces[Resource.Grain] * (1 / grain_trade_ratio)
@@ -142,7 +142,7 @@ class Winner(ExpectimaxBaselinePlayer):
         values[19] = resource_expectation[Resource.Ore] * (1 / ore_trade_ratio)
 
         # total resource expectation
-        values[20] = np.sum(values[10,14])
+        values[20] = np.sum(values[i] for i in range(10,15))
 
 
         # the number of unexposed development cards, except for VP dev cards. (num dev cards)
@@ -156,7 +156,7 @@ class Winner(ExpectimaxBaselinePlayer):
         values[25] = 1 if self.can_settle_city() else 0
         values[26] = 1 if self.has_resources_for_development_card() else 0
 
-        values[27] = len(board.get_settleable_locations_by_player()) # number of places we could build a settlement
+        values[27] = len(board.get_settleable_locations_by_player(self)) # number of places we could build a settlement
 
         # estimate how many turns it would take to get the resources for a road, settlement, city or dev card.
         values[28] = self.get_turns_till_piece(currentResouces, resource_expectation, ResourceAmounts.road)
@@ -170,7 +170,7 @@ class Winner(ExpectimaxBaselinePlayer):
                                                resource_expectation,
                                                ResourceAmounts.development_card)
 
-        return np.prod(values, weights)
+        return np.dot(values, weights)
 
 
     def heuristic_final_phase(self, state):
@@ -239,7 +239,7 @@ class Winner(ExpectimaxBaselinePlayer):
             needed_amount = requiredResourcesForPiece[r] - currentResources[r]
             if needed_amount > 0: # if we have the resource (in the right amount) - we are good. nothing to do
                 if resourceExpectation[r] == 0:
-                    num_turns += 4 / max(resourceExpectation) #TODO: change to calc trade ratio for that resource
+                    num_turns += 4 / max(resourceExpectation.values()) #TODO: change to calc trade ratio for that resource
                     continue
                 num_turns = max(num_turns, ceil(needed_amount / resourceExpectation[r]))
 
