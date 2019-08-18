@@ -17,8 +17,10 @@ from players.filters import *
 
 MAX_ITERATIONS = 10
 
-
 class Winner(ExpectimaxBaselinePlayer):
+    default_weights = np.array(
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 100, 100, 100, 100, 100, 100, 100, 100,
+         100, 100, 1, 0, 1, 1, 1, 1, 1, 1, -0.1, -0.1, -0.1, -0.1, 1])
 
     winner_weights = np.ones(50)
     final_phase_weights = np.ones(50)
@@ -28,11 +30,12 @@ class Winner(ExpectimaxBaselinePlayer):
     def __init__(self, id, seed=None, timeout_seconds=5, weights = winner_weights):
         super().__init__(id=id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=self.filter_moves(seed), filter_random_moves=create_monte_carlo_filter(seed, 10))
 
+
         self.scores_by_player = None
         self._players_and_factors = None
         self.initialize_weights()
 
-    default_weights = np.array([1,1,1,1,1,1,1,1,1,1, 100,100,100,100,100,100,100,100,100,100, 1, 0, 1,1,1,1,1,1,-0.1,-0.1,-0.1,-0.1])
+
 
     def initialize_weights(self):
         for i in range(10):
@@ -47,7 +50,6 @@ class Winner(ExpectimaxBaselinePlayer):
         # light (negative) weights for turns to get resources for specific pieces.
         for i in range(28,32):
             self.winner_weights[i] = -0.1
-
 
 
         self.expectimax_weights = {Colony.City: 2, Colony.Settlement: 1, Road.Paved: 0.4,
