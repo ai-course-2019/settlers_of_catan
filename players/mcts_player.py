@@ -17,6 +17,11 @@ class MCTSPlayer(ExpectimaxBaselinePlayer):
         self.exploration_param = exploration_param
 
     def choose_move(self, state: CatanState):
+        next_moves = state.get_next_moves()
+        if len(next_moves) == 1:
+            return next_moves[0]
+        if state.is_initialisation_phase():
+            return self._random_choice(next_moves)
         mcts = MCTS(MCTSNode(state), self.exploration_param)
         mcts.do_n_rollouts(self.iterations)
         return mcts.choose().move
