@@ -19,20 +19,20 @@ MAX_ITERATIONS = 10
 
 
 class Winner(ExpectimaxBaselinePlayer):
-
-    winner_weights = np.ones(50)
+    default_winning_weights = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 1, 0, 1, 1, 1, 1, 1, 1, -0.1, -0.1, -0.1, -0.1])
     final_phase_weights = np.ones(50)
     initialization_phase_weights = np.ones(50)
 
 
-    def __init__(self, id, seed=None, timeout_seconds=5, weights = winner_weights):
+    def __init__(self, id, seed=None, timeout_seconds=5, weights=default_winning_weights):
         super().__init__(id=id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=self.filter_moves(seed), filter_random_moves=create_monte_carlo_filter(seed, 10))
 
         self.scores_by_player = None
         self._players_and_factors = None
-        self.initialize_weights()
+        self.winner_weights = weights
+        self.expectimax_weights = {Colony.City: 2, Colony.Settlement: 1, Road.Paved: 0.4,
+                                   DevelopmentCard.VictoryPoint: 1, DevelopmentCard.Knight: 2.0 / 3.0}
 
-    default_weights = np.array([1,1,1,1,1,1,1,1,1,1, 100,100,100,100,100,100,100,100,100,100, 1, 0, 1,1,1,1,1,1,-0.1,-0.1,-0.1,-0.1])
 
     def initialize_weights(self):
         for i in range(10):
@@ -45,13 +45,8 @@ class Winner(ExpectimaxBaselinePlayer):
         self.winner_weights[21] = 0
 
         # light (negative) weights for turns to get resources for specific pieces.
-        for i in range(28,32):
+        for i in range(28, 32):
             self.winner_weights[i] = -0.1
-
-
-
-        self.expectimax_weights = {Colony.City: 2, Colony.Settlement: 1, Road.Paved: 0.4,
-                                   DevelopmentCard.VictoryPoint: 1, DevelopmentCard.Knight: 2.0 / 3.0}
 
 
     def choose_resources_to_drop(self) -> Dict[Resource, int]:
@@ -175,7 +170,6 @@ class Winner(ExpectimaxBaselinePlayer):
         if self.in_first_phase(state):
             return self.heuristic_first_phase(state, self.winner_weights)
 
-
         return self.heuristic_first_phase(state, self.final_phase_weights)
         # return self.heuristic_final_phase(state)
 
@@ -186,7 +180,7 @@ class Winner(ExpectimaxBaselinePlayer):
 
 
     def heuristic_initialisation_phase(self, state):
-        #return sum(self.get_resource_expectation(self, state).values())
+        # return sum(self.get_resource_expectation(self, state).values())
         return self.weighted_probabilities_heuristic(state)
 
 
@@ -345,7 +339,7 @@ class Winner(ExpectimaxBaselinePlayer):
             needed_amount = requiredResourcesForPiece[r] - currentResources[r]
             if needed_amount > 0:  # if we have the resource (in the right amount) - we are good. nothing to do
                 if resourceExpectation[r] == 0:
-                    num_turns += 4 / max(resourceExpectation.values()) #TODO: change to calc trade ratio for that resource
+                    num_turns += 4 / max(resourceExpectation.values())  # TODO: change to calc trade ratio for that resource
                     continue
                 num_turns = max(num_turns, ceil(needed_amount / resourceExpectation[r]))
 
