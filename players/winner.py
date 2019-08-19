@@ -365,7 +365,7 @@ class Winner(ExpectimaxBaselinePlayer):
     def filter_moves(self, seed, branching_factor=3459):
         a = create_monte_carlo_filter(seed, branching_factor)
         b = self.filter_out_useless_trades()
-        c = create_bad_robber_placement_filter(self)
+        c = self.filter_out_robber_placements_on_self()
 
 
         def spaghetti_filter(all_moves, state):
@@ -411,6 +411,27 @@ class Winner(ExpectimaxBaselinePlayer):
 
         return useless_trades_filter
 
+
+    def filter_out_robber_placements_on_self(self):
+
+        def is_good_move(state, move) -> bool:
+            if move.robber_placement_land == state.board.get_robber_land():
+                return True
+            for location in move.robber_placement_land.locations:
+                if state.board.is_colonised_by(state.get_current_player(), location):
+                    return False
+            return True
+
+
+        def bad_robber_placement_filter(all_moves, state):
+            assert state is not None
+            good_moves = [move for move in all_moves if is_good_move(state, move)]
+            if not good_moves:
+                return all_moves
+            return good_moves
+
+
+        return bad_robber_placement_filter
 
     def amount_of_development_card_can_afford(self):
         return min(self.resources[Resource.Ore],
