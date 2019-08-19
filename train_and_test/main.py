@@ -46,8 +46,8 @@ def execute_game(plot_map=True):
     seed = None
     timeout_seconds = 5
     p0 = Winner(0, seed, 5)
-    p1 = ExpectimaxWeightedProbabilitiesPlayer(1)
-    p2 = ExpectimaxWeightedProbabilitiesPlayer(2)
+    p1 = RandomPlayer(1)
+    p2 = RandomPlayer(2)
     p3 = RandomPlayer(3)
     players = [p0, p1, p2, p3]
 
@@ -146,4 +146,4 @@ def run_n_games(n):
 
 
 if __name__ == '__main__':
-    run_n_games(40)
+    run_n_games(10)
