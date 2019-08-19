@@ -23,8 +23,7 @@ class ExpectimaxBaselinePlayer(AbstractPlayer):
         return float(state.get_scores_by_player()[self])
 
 
-    def __init__(self, id, seed=None, timeout_seconds=5, heuristic=None, filter_moves=lambda x, y: x,
-                 filter_random_moves=lambda x, y: x):
+    def __init__(self, id, seed=None, timeout_seconds=5, heuristic=None, filter_moves=lambda x, y: x):
         assert seed is None or (isinstance(seed, int) and seed > 0)
 
         super().__init__(id, seed, timeout_seconds)
@@ -36,14 +35,13 @@ class ExpectimaxBaselinePlayer(AbstractPlayer):
             is_maximizing_player=lambda p: p is self,
             evaluate_heuristic_value=heuristic,
             timeout_seconds=self._timeout_seconds,
-            filter_moves=filter_moves,
-            filter_random_moves=filter_random_moves)
+            filter_moves=filter_moves)
 
     def choose_move(self, state: CatanState):
-        #        self.expectimax_alpha_beta.start_turn_timer()
+        self.expectimax_alpha_beta.start_turn_timer()
         best_move, move, depth = None, None, 1
-        #       while not self.expectimax_alpha_beta.ran_out_of_time:
-        for i in range(1):
+        while not self.expectimax_alpha_beta.ran_out_of_time:
+        # for i in range(1):
             best_move = move
             logger.info('starting depth {}'.format(depth))
             move = self.expectimax_alpha_beta.get_best_move(state, max_depth=depth)

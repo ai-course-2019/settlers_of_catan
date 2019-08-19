@@ -10,8 +10,7 @@ class AlphaBetaExpectimax(TimeoutableAlgorithm):
     def __init__(self, is_maximizing_player: Callable[[AbstractPlayer], bool],
                  evaluate_heuristic_value: Callable[[AbstractState], float],
                  timeout_seconds=5,
-                 filter_moves: Callable[[List[AbstractMove]], List[AbstractMove]]=lambda l: l,
-                 filter_random_moves=lambda l: l):
+                 filter_moves: Callable[[List[AbstractMove]], List[AbstractMove]]=lambda l: l):
         """
         wrapper of the expectiamx with alpha-beta pruning algorithm
         it inherits from TimeoutableAlgorithm to enable iterative deepening
@@ -26,7 +25,6 @@ class AlphaBetaExpectimax(TimeoutableAlgorithm):
         """
         super().__init__(timeout_seconds)
         self.filter_moves = filter_moves
-        self.filter_random_moves = filter_random_moves
         self.state = None
         self.max_depth = 0
         self._is_maximizing_player = is_maximizing_player
@@ -69,7 +67,7 @@ class AlphaBetaExpectimax(TimeoutableAlgorithm):
 
         if is_random_event:
             v = 0
-            for random_move in self.filter_random_moves(self.state.get_next_random_moves()):
+            for random_move in self.state.get_next_random_moves():
                 self.state.make_random_move(random_move)
                 u, _ = self._alpha_beta_expectimax(depth - 1, alpha, beta, False)
                 v += random_move.probability * u

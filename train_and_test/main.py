@@ -98,6 +98,11 @@ def execute_game(plot_map=True):
     excel_data_grabber(score_by_player[0], score_by_player[1], score_by_player[2], score_by_player[3], turn_count,
                        p0_type, p_others_type)
 
+    if (score_by_player[0] >= 10):
+        return 1
+    else:
+        return 0
+
 
 def flush_to_excel():
     global A, B, C, D, E, F, G, excel_file_name
@@ -132,8 +137,12 @@ def run_single_game_and_plot_map():
 
 
 def run_n_games(n):
+    #counts the number of times p0 won. (player in the first position in execute_game)
+    count_wins = 0
     for i in range(n):
-        execute_game(plot_map=False)
+        count_wins += execute_game(plot_map=False)
+    print('\n' +"============================================================== \n"+ "number of wins: " + count_wins(str) + " out of " + n(str) + " games.")
+
 
 
 if __name__ == '__main__':

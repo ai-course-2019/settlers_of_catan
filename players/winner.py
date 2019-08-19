@@ -24,7 +24,7 @@ class Winner(ExpectimaxBaselinePlayer):
 
 
     def __init__(self, id, seed=None, timeout_seconds=5, weights=default_winning_weights):
-        super().__init__(id=id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=self.filter_moves(seed), filter_random_moves=create_monte_carlo_filter(seed, 10))
+        super().__init__(id=id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=self.filter_moves(seed))
 
         self.scores_by_player = None
         self._players_and_factors = None
@@ -178,8 +178,31 @@ class Winner(ExpectimaxBaselinePlayer):
 
 
     def heuristic_initialisation_phase(self, state):
-        # return sum(self.get_resource_expectation(self, state).values())
-        return self.weighted_probabilities_heuristic(state)
+
+        resource_expectation = self.get_resource_expectation(self, state)
+        total_expectation = sum(resource_expectation.values())
+        brick_expectation = resource_expectation[Resource.Brick]
+        lumber_expectation = resource_expectation[Resource.Lumber]
+        wool_expectation = resource_expectation[Resource.Wool]
+        grain_expectation = resource_expectation[Resource.Grain]
+        ore_expectation = resource_expectation[Resource.Ore]
+
+        has_decent_road_resources = 0
+        if brick_expectation >= state.probabilities_by_dice_values[4] and lumber_expectation >= state.probabilities_by_dice_values[4]:
+            has_decent_road_resources = 1
+
+        has_decent_city_resources = 0
+
+        has_harbor = 0
+        for harbor_type in Harbor:
+            if state.board.is_player_on_harbor(self, harbor_type):
+                has_harbor += 1
+
+
+        # change to variable to check values in debug, and also add the harbor and road shit
+        return sum(self.get_resource_expectation(self, state).values()) + brick_expectation + lumber_expectation + 2 * has_decent_road_resources + has_harbor
+
+        # return self.weighted_probabilities_heuristic(state)
 
 
     def heuristic_first_phase(self, state, weights=default_winning_weights):
@@ -365,7 +388,7 @@ class Winner(ExpectimaxBaselinePlayer):
     def filter_moves(self, seed, branching_factor=3459):
         a = create_monte_carlo_filter(seed, branching_factor)
         b = self.filter_out_useless_trades()
-        c = create_bad_robber_placement_filter(self)
+        c = self.filter_out_robber_placements_on_self()
 
 
         def spaghetti_filter(all_moves, state):
@@ -411,6 +434,27 @@ class Winner(ExpectimaxBaselinePlayer):
 
         return useless_trades_filter
 
+
+    def filter_out_robber_placements_on_self(self):
+
+        def is_good_move(state, move) -> bool:
+            if move.robber_placement_land == state.board.get_robber_land():
+                return True
+            for location in move.robber_placement_land.locations:
+                if state.board.is_colonised_by(state.get_current_player(), location):
+                    return False
+            return True
+
+
+        def bad_robber_placement_filter(all_moves, state):
+            assert state is not None
+            good_moves = [move for move in all_moves if is_good_move(state, move)]
+            if not good_moves:
+                return all_moves
+            return good_moves
+
+
+        return bad_robber_placement_filter
 
     def amount_of_development_card_can_afford(self):
         return min(self.resources[Resource.Ore],
