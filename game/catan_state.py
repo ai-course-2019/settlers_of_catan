@@ -541,7 +541,7 @@ class CatanState(AbstractState):
         if i == 0:
             return set()
         paths_nearby = self.board.get_unpaved_paths_near_player(player)
-        if len(paths_nearby):
+        if len(paths_nearby) == 0:
             return set()
         curr_path_index = np.random.randint(len(paths_nearby))
         curr_path = paths_nearby[curr_path_index]
