@@ -73,7 +73,7 @@ def execute_game(plot_map=True):
         move_data = {k: v for k, v in move.__dict__.items() if (v and k != 'resources_updates') and not
         (k == 'robber_placement_land' and v == robber_placement) and not
                      (isinstance(v, dict) and sum(v.values()) == 0)}
-        logger.info('| {}| turn: {:3} | move:{} |'.format(''.join('{} '.format(v) for v in score_by_player),
+        logger.info('-| {}| turn: {:3} | move:{} |'.format(''.join('{} '.format(v) for v in score_by_player),
                                                           turn_count, move_data))
         if plot_map:
             image_name = 'turn_{}_scores_{}.png'.format(

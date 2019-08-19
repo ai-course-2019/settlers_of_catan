@@ -21,7 +21,7 @@ class MCTSPlayer(ExpectimaxBaselinePlayer):
         if len(next_moves) <= 1:
             return next_moves[0]
         if state.is_initialisation_phase():
-            return self._random_choice(next_moves)
+            return self._random_choice(next_moves)  # TODO: change to the better heuristic
         mcts = MCTS(MCTSNode(state), self.exploration_param)
         mcts.do_n_rollouts(self.iterations)
         return mcts.choose().move
