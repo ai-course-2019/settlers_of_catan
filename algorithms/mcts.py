@@ -22,7 +22,7 @@ class MCTS:
     def do_rollout(self):
         "Make the tree one layer better. (Train for one iteration.)"
         chosen_child = self._select()
-        result = self._simulate(chosen_child)
+        result = (self.player == self._simulate(chosen_child))
         chosen_child.backpropagate(result)
 
     def do_n_rollouts(self, n):
@@ -50,7 +50,7 @@ class MCTS:
         "Returns the result of a random simulation (to completion) of `node`"
         while True:
             if node.is_terminal():
-                return node.result(self.player)
+                return node.result()
             node = node.find_random_child()
 
 
@@ -101,16 +101,14 @@ class MCTSNode:
         "Returns True if the node has no children"
         return self.state.is_final()
 
-    def result(self, player):
-        "Assumes `self` is terminal node. 1=player won, 0=otherwise"
+    def result(self):
+        "Assumes `self` is terminal node. returns winner player's index"
         scores_by_players = self.state.get_scores_by_player_indexed()
         return scores_by_players.index(max(scores_by_players))
 
     def backpropagate(self, result):
         self._n += 1
-        # self._q += 1
-        if result == self.state.get_current_player_index():
-            self._q += 1
+        self._q += result
         if self.parent:
             self.parent.backpropagate(result)
 

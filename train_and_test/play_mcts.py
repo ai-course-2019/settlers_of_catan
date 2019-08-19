@@ -15,10 +15,10 @@ def scores_changed(state, previous_scores, scores):
     return False
 
 
-def execute_game(plot_map=True):
+def execute_game(i, iterations, plot_map=True):
     seed = None
     timeout_seconds = 5
-    p0 = MCTSPlayer(0, iterations=100)
+    p0 = MCTSPlayer(0, iterations)
     p1 = RandomPlayer(1)
     p2 = RandomPlayer(2)
     p3 = RandomPlayer(3)
@@ -62,16 +62,23 @@ def execute_game(plot_map=True):
                                }
     fileLogger.info('\n' + '\n'.join(' {:80} : {} '.format(str(name), score)
                                      for name, score in players_scores_by_names.items()) +
-                    '\n turns it took: {}\n'.format(turn_count) + ('-' * 156))
+                    '\n turns it took: {}\n'.format(turn_count) + 'game num: {}, num iterations: {}'.format(i, iterations) + '\n' + ('-' * 156))
 
     p0_type = type(p0).__name__
     p_others_type = type(p1).__name__
 
 
 
-def run_single_game_and_plot_map():
-    execute_game(plot_map=False)
+# def run_single_game_and_plot_map():
+#     execute_game(plot_map=False)
 
+
+def run_multiple_games_with_different_iterations():
+    # for i in range(20):
+    #     execute_game(i+1, 100, plot_map=False)
+    # for j in range(10):
+    #     execute_game(j+1, 1000, plot_map=False)
+    execute_game(1, 1, plot_map=False)
 
 if __name__ == '__main__':
-    run_single_game_and_plot_map()
+    run_multiple_games_with_different_iterations()
