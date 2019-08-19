@@ -195,7 +195,7 @@ class CatanState(AbstractState):
 
     def get_current_player_index(self):
         "returns the index of the current player"
-        return (self._current_player_index - 1) % len(self.players)
+        return self._current_player_index
 
     def pop_development_card(self) -> DevelopmentCard:
         return self._dev_cards.pop()
