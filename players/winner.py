@@ -17,10 +17,14 @@ from players.filters import *
 
 MAX_ITERATIONS = 10
 
+TOTAL_WEIGHTS = 34
+
 
 class Winner(ExpectimaxBaselinePlayer):
 
-    default_winning_weights = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 1, 0, 1, 1, 1, 1, 1, 1, -0.1, -0.1, -0.1, -0.1, 1, 1])
+    default_winning_weights = np.array([1, 100, 1, -0.1, 1])
+
+    winning_weights = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 1, 1, 1, 1, 1, 1, 1, 1, -0.1, -0.1, -0.1, -0.1, 1, 1])
 
 
     def __init__(self, id, seed=None, timeout_seconds=5, weights=default_winning_weights):
@@ -28,24 +32,39 @@ class Winner(ExpectimaxBaselinePlayer):
 
         self.scores_by_player = None
         self._players_and_factors = None
-        self.winner_weights = weights
+        self.winner_weights = None
         self.expectimax_weights = {Colony.City: 2, Colony.Settlement: 1, Road.Paved: 0.4,
                                    DevelopmentCard.VictoryPoint: 1, DevelopmentCard.Knight: 2.0 / 3.0}
 
+        self.initialize_weights(weights)
 
-    def initialize_weights(self):
+
+    def initialize_weights(self, given_weights):
+        """
+        initializes a np.array of weights for our heuristic.
+        the initialization is based on the given weights.
+        :param given_weights:
+        :return:
+        """
+        self.winner_weights = np.ones(TOTAL_WEIGHTS)
         for i in range(10):
-            self.winner_weights[i] = 0
+            self.winner_weights[i] = given_weights[0]
 
-        # heavy weights for resource expectation
-        for i in range(10, 20):
-            self.winner_weights[i] = 100
+        for i in range(10, 21):
+            self.winner_weights[i] = given_weights[1]
 
-        self.winner_weights[21] = 0
+        for i in range(22, 23):
+            self.winner_weights[i] = given_weights[2]
 
-        # light (negative) weights for turns to get resources for specific pieces.
+        self.winner_weights[32] = given_weights[2]
+
         for i in range(28, 32):
-            self.winner_weights[i] = -0.1
+            self.winner_weights[i] = given_weights[3]
+
+        self.winner_weights[33] = given_weights[4]
+
+        self.winner_weights[27] = 0
+
 
 
     def choose_resources_to_drop(self) -> Dict[Resource, int]:
@@ -177,7 +196,7 @@ class Winner(ExpectimaxBaselinePlayer):
         return my_victory_points <= 7
 
 
-    def heuristic_initialisation_phase(self, state):
+    def heuristic_initialisation_phase(self, state, weights=np.ones(10)):
 
         resource_expectation = self.get_resource_expectation(self, state)
         total_expectation = sum(resource_expectation.values())
@@ -187,25 +206,48 @@ class Winner(ExpectimaxBaselinePlayer):
         grain_expectation = resource_expectation[Resource.Grain]
         ore_expectation = resource_expectation[Resource.Ore]
 
+        # define which probabilities are considered  'decent'. for example: if decent = 4, then 4,5,6,8,9,10 are considered decent
+        decent = 4
+
         has_decent_road_resources = 0
-        if brick_expectation >= state.probabilities_by_dice_values[4] and lumber_expectation >= state.probabilities_by_dice_values[4]:
+        if brick_expectation >= state.probabilities_by_dice_values[decent] and lumber_expectation >= state.probabilities_by_dice_values[decent]:
             has_decent_road_resources = 1
 
+
+        has_decent_settlement_resources = 0
+        if (brick_expectation >= state.probabilities_by_dice_values[decent]) and lumber_expectation >= state.probabilities_by_dice_values[decent] and wool_expectation >= state.probabilities_by_dice_values[4] and grain_expectation >= state.probabilities_by_dice_values[4]:
+            has_decent_settlement_resources = 1
+
+
         has_decent_city_resources = 0
+        if ore_expectation >= state.probabilities_by_dice_values[decent+1] and grain_expectation >= state.probabilities_by_dice_values[decent]:
+            has_decent_city_resources = 1
+
+
 
         has_harbor = 0
         for harbor_type in Harbor:
             if state.board.is_player_on_harbor(self, harbor_type):
                 has_harbor += 1
 
+        values = np.zeros(10)
+        values[0] = brick_expectation
+        values[1] = lumber_expectation
+        values[2] = wool_expectation
+        values[3] = grain_expectation
+        values[4] = ore_expectation
+        values[5] = total_expectation
+        values[6] = has_decent_road_resources
+        values[7] = has_decent_settlement_resources
+        values[8] = has_decent_city_resources
 
-        # change to variable to check values in debug, and also add the harbor and road shit
-        return sum(self.get_resource_expectation(self, state).values()) + brick_expectation + lumber_expectation + 2 * has_decent_road_resources + has_harbor
+
+        return np.dot(values, weights)
 
         # return self.weighted_probabilities_heuristic(state)
 
 
-    def heuristic_first_phase(self, state, weights=default_winning_weights):
+    def heuristic_first_phase(self, state, weights):
         """
         prefer higher expected resource yield, rather than VP.
         also reward having places to build settlements.
@@ -214,7 +256,7 @@ class Winner(ExpectimaxBaselinePlayer):
         :return: returns a score for this state.
         """
 
-        values = np.zeros(34)
+        values = np.zeros(TOTAL_WEIGHTS)
         board = state.board
         scores_by_players = state.get_scores_by_player()
         currentResouces = self.resources
@@ -260,7 +302,7 @@ class Winner(ExpectimaxBaselinePlayer):
         values[20] = np.sum(values[i] for i in range(10, 15))
 
         # the number of unexposed development cards, except for VP dev cards. (num dev cards)
-        values[21] = len(self.unexposed_development_cards) - self.unexposed_development_cards[DevelopmentCard.VictoryPoint]
+        values[21] = sum(self.unexposed_development_cards.values()) + sum(self.exposed_development_cards.values()) - self.unexposed_development_cards[DevelopmentCard.VictoryPoint]
 
         # average and max difference between player's VP, and other's VP. should be with negative weights.
         values[22] = Winner.get_avg_vp_difference(scores_by_players, self)  # Avg VP diff
@@ -284,11 +326,14 @@ class Winner(ExpectimaxBaselinePlayer):
                                                resource_expectation,
                                                ResourceAmounts.development_card)
 
+        # our VP
         values[32] = scores_by_players[self]
 
+        # the other heuristic
         values[33] = self.weighted_probabilities_heuristic(state)
 
-        values = np.multiply(values, weights)
+        values_debug = np.multiply(values,weights)
+        values_debug = 0
 
         return np.dot(values, weights)
 
