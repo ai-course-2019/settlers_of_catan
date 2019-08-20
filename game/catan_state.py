@@ -451,7 +451,7 @@ class CatanState(AbstractState):
             return moves
 
         for dev_card_type in DevelopmentCard:
-            if player.unexposed_development_cards[dev_card_type] == 0:  # player doesn't have this card
+            if dev_card_type == DevelopmentCard.VictoryPoint or player.unexposed_development_cards[dev_card_type] == 0:  # player doesn't have this card
                 continue
             for move in moves:
                 new_move = copy.deepcopy(move)
