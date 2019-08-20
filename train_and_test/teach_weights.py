@@ -6,8 +6,6 @@ from typing import Dict
 
 from algorithms.first_choice_hill_climbing import *
 from game.catan_state import CatanState
-from players.expectimax_baseline_player import ExpectimaxBaselinePlayer
-from players.expectimax_weighted_probabilities_player import ExpectimaxWeightedProbabilitiesPlayer
 from players.expectimax_weighted_probabilities_with_filter_player import ExpectimaxWeightedProbabilitiesWithFilterPlayer
 from players.winner import Winner
 from train_and_test.logger import logger
@@ -42,12 +40,15 @@ class WeightsSpace(AbstractHillClimbableSpace):
             xx.i_ = i
             all_args.append(xx)
 
-        results = self._pool.map(WeightsSpace.run_game, all_args)
+        results = 0
+        for i in range(self._games_per_iteration):
+            arg = copy.deepcopy(all_args[i])
+            result = WeightsSpace.run_game(arg)
+            results += result
 
-        evaluation = sum(results)
         self.iterations_count += 1
 
-        return evaluation
+        return results
 
     @staticmethod
     def run_game(args):
@@ -65,11 +66,11 @@ class WeightsSpace(AbstractHillClimbableSpace):
             count_moves += 1
         scores = state.get_scores_by_player()
         logger.info('| done iteration {}. scores: {}'
-                    .format(args.i_, {'p0  (new weights)': scores[p0], 'p1': scores[p1]}))
+                    .format(args.i_, {'p0  (new weights)': scores[p0], 'p1': scores[p1], 'p2': scores[p2], 'p3': scores[p3]}))
 
         count_moves_factor = 1 * count_moves
         p0_factor = 10000 if (scores[p0] >= 10) else 0
-        p_others_factor = (sum(scores) - scores[p0]) * 0.2
+        p_others_factor = (sum(scores.values()) - scores[p0]) * 0.2
         res = p0_factor - (p_others_factor * count_moves_factor)
 
         logger.info('| process {} done. res: {}'.format(args.i_, res))
@@ -108,9 +109,9 @@ def load_weights(file_name) -> Dict[Any, float]:
 
 
 def main():
-    pool = multiprocessing.Pool(processes=(multiprocessing.cpu_count()))
+    pool = 5
     space = WeightsSpace(pool)
-    previous_result, result = (Winner.winner_weights, Winner.winner_weights)
+    previous_result, result = (Winner.default_winning_weights, Winner.default_winning_weights)
     for _ in range(5):
         space.iterations_count = 0
         result = first_choice_hill_climbing(space, result)

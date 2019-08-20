@@ -19,9 +19,8 @@ MAX_ITERATIONS = 10
 
 
 class Winner(ExpectimaxBaselinePlayer):
+
     default_winning_weights = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 1, 0, 1, 1, 1, 1, 1, 1, -0.1, -0.1, -0.1, -0.1, 1, 1])
-    final_phase_weights = np.ones(34)
-    initialization_phase_weights = np.ones(34)
 
 
     def __init__(self, id, seed=None, timeout_seconds=5, weights=default_winning_weights):
@@ -170,8 +169,7 @@ class Winner(ExpectimaxBaselinePlayer):
         if self.in_first_phase(state):
             return self.heuristic_first_phase(state, self.winner_weights)
 
-        return self.heuristic_first_phase(state, self.final_phase_weights)
-        # return self.heuristic_final_phase(state)
+        return self.heuristic_final_phase(state)
 
 
     def in_first_phase(self, state=None):
