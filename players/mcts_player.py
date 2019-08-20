@@ -1,11 +1,15 @@
 from math import ceil
+from typing import Dict
 
+from game.board import Harbor
 from game.catan_state import CatanState
 from game.resource import Resource, ResourceAmounts
 
 from players.abstract_player import AbstractPlayer
 from algorithms.mcts import MCTS, MCTSNode
 from collections import Counter
+import numpy as np
+
 
 class MCTSPlayer(AbstractPlayer):
     """
@@ -19,6 +23,7 @@ class MCTSPlayer(AbstractPlayer):
         self.iterations = iterations
         self.exploration_param = exploration_param
         self.scores_by_player = None
+
 
     def choose_move(self, state: CatanState):
         self.scores_by_player = state.get_scores_by_player_indexed()
@@ -44,6 +49,7 @@ class MCTSPlayer(AbstractPlayer):
         if self.in_first_phase():
             return self.drop_resources_in_first_phase()
         return self.drop_resources_in_final_phase()
+
 
     def drop_resources_in_first_phase(self):
         resources_count = sum(self.resources.values())
@@ -94,8 +100,48 @@ class MCTSPlayer(AbstractPlayer):
 
         return resources_to_drop
 
-    def initialization_phase_heuaristic(self, state):
-        pass
+
+    def initialization_phase_heuaristic(self, state, weights=np.ones(10)):
+        resource_expectation = self.get_resource_expectation(self, state)
+        total_expectation = sum(resource_expectation.values())
+        brick_expectation = resource_expectation[Resource.Brick]
+        lumber_expectation = resource_expectation[Resource.Lumber]
+        wool_expectation = resource_expectation[Resource.Wool]
+        grain_expectation = resource_expectation[Resource.Grain]
+        ore_expectation = resource_expectation[Resource.Ore]
+
+        # define which probabilities are considered  'decent'. for example: if decent = 4, then 4,5,6,8,9,10 are considered decent
+        decent = 4
+
+        has_decent_road_resources = 0
+        if brick_expectation >= state.probabilities_by_dice_values[decent] and lumber_expectation >= state.probabilities_by_dice_values[decent]:
+            has_decent_road_resources = 1
+
+        has_decent_settlement_resources = 0
+        if (brick_expectation >= state.probabilities_by_dice_values[decent]) and lumber_expectation >= state.probabilities_by_dice_values[decent] and wool_expectation >= state.probabilities_by_dice_values[decent] and grain_expectation >= state.probabilities_by_dice_values[decent]:
+            has_decent_settlement_resources = 1
+
+        has_decent_city_resources = 0
+        if ore_expectation >= state.probabilities_by_dice_values[decent + 1] and grain_expectation >= state.probabilities_by_dice_values[decent]:
+            has_decent_city_resources = 1
+
+        has_harbor = 0
+        for harbor_type in Harbor:
+            if state.board.is_player_on_harbor(self, harbor_type):
+                has_harbor += 1
+
+        values = np.zeros(10)
+        values[0] = brick_expectation
+        values[1] = lumber_expectation
+        values[2] = wool_expectation
+        values[3] = grain_expectation
+        values[4] = ore_expectation
+        values[5] = total_expectation
+        values[6] = has_decent_road_resources
+        values[7] = has_decent_settlement_resources
+        values[8] = has_decent_city_resources
+
+        return np.dot(values, weights)
 
 
 
