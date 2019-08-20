@@ -45,10 +45,10 @@ def clean_previous_images():
 def execute_game(plot_map=True):
     seed = None
     timeout_seconds = 5
-    p0 = Winner(0, seed, timeout_seconds=3)
-    p1 = ExpectimaxWeightedProbabilitiesWithFilterPlayer(1, timeout_seconds=3)
-    p2 = RandomPlayer(2)
-    p3 = RandomPlayer(3)
+    p0 = Winner(id=0, seed=seed, timeout_seconds=timeout_seconds)
+    p1 = RandomPlayer(id=1)
+    p2 = RandomPlayer(id=2)
+    p3 = RandomPlayer(id=3)
     players = [p0, p1, p2, p3]
 
     state = CatanState(players, seed)
@@ -86,9 +86,10 @@ def execute_game(plot_map=True):
                                }
     names = list(players_scores_by_names.keys())
     names.sort()
-    fileLogger.info('\n' + '\n'.join(' {:80} : {} '.format(str(name), players_scores_by_names[name])
-                                     for name in names) +
-                    '\n turns it took: {}\n'.format(turn_count) + ('-' * 156))
+
+    # fileLogger.info('\n' + '\n'.join(' {:80} : {} '.format(str(name), players_scores_by_names[name])
+    #                                  for name in names) +
+    #                 '\n turns it took: {}\n'.format(turn_count) + ('-' * 156))
 
     p0_type = type(p0).__name__
     p_others_type = type(p1).__name__
@@ -98,7 +99,13 @@ def execute_game(plot_map=True):
     excel_data_grabber(score_by_player[0], score_by_player[1], score_by_player[2], score_by_player[3], turn_count,
                        p0_type, p_others_type)
 
-    if (score_by_player[0] >= 10):
+    excel_output = ""
+    for i in range(len(players)):
+        player_output = str(players[i]) + "@" + str(score_by_player[i])
+        excel_output += player_output + "\n"
+    fileLogger.info("|\n#" + str(turn_count) + "\n" + excel_output)
+
+    if score_by_player[0] >= 10:
         return 1
     else:
         return 0
@@ -137,12 +144,13 @@ def run_single_game_and_plot_map():
 
 
 def run_n_games(n):
-    #counts the number of times p0 won. (player in the first position in execute_game)
     count_wins = 0
     for i in range(n):
         count_wins += execute_game(plot_map=False)
-        print('\n' +"============================================================== \n"+ "number of wins: " + str(count_wins))
-
+    # print("\n==============================================================\n"
+    #       + "Number of wins (out of " + str(n) + "): \n"
+    #       + str(count_wins)
+    #       + "\n==============================================================\n")
 
 
 if __name__ == '__main__':

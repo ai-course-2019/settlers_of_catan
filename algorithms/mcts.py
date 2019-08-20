@@ -8,11 +8,16 @@ from game.catan_moves import CatanMove
 class MCTS:
     "Monte Carlo tree searcher. First rollout the tree then choose a move."
 
-    def __init__(self, root, exploration_weight=1.4):
+    def __init__(self, root, moves, exploration_weight=1.4):
         assert not root.is_terminal()
         self.root = root
+        for move in moves:
+            my_state = copy.deepcopy(self.root.state)
+            my_state.make_move(move)
+            my_state.make_random_move()
+            self.root.children.append(MCTSNode(my_state, move, self.root))
         self.player = self.root.state.get_current_player_index()
-        self.children = dict()  # children of each node
+        self.children = {self.root: self.root.children}  # children of each node
         self.exploration_weight = exploration_weight
 
     def choose(self):
@@ -22,7 +27,7 @@ class MCTS:
     def do_rollout(self):
         "Make the tree one layer better. (Train for one iteration.)"
         chosen_child = self._select()
-        result = (self.player == self._simulate(chosen_child))
+        result = 1 if (self.player == self._simulate(chosen_child)) else 0
         chosen_child.backpropagate(result)
 
     def do_n_rollouts(self, n):
@@ -35,9 +40,10 @@ class MCTS:
         while True:
             if node.get_n() == 0 or node.is_terminal():
                 return node
-            if node not in self.children.keys():
+            keys = self.children.keys()
+            if node not in keys:
                 self._expand(node)
-            unexplored = self.children[node] - self.children.keys()
+            unexplored = self.children[node] - keys
             if unexplored:
                 return unexplored.pop()
             node = node.best_child(self.exploration_weight)  # descend a layer deeper

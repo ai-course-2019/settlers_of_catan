@@ -246,17 +246,13 @@ class Winner(ExpectimaxBaselinePlayer):
         if brick_expectation >= state.probabilities_by_dice_values[decent] and lumber_expectation >= state.probabilities_by_dice_values[decent]:
             has_decent_road_resources = 1
 
-
         has_decent_settlement_resources = 0
         if (brick_expectation >= state.probabilities_by_dice_values[decent]) and lumber_expectation >= state.probabilities_by_dice_values[decent] and wool_expectation >= state.probabilities_by_dice_values[decent] and grain_expectation >= state.probabilities_by_dice_values[decent]:
             has_decent_settlement_resources = 1
 
-
         has_decent_city_resources = 0
         if ore_expectation >= state.probabilities_by_dice_values[decent+1] and grain_expectation >= state.probabilities_by_dice_values[decent]:
             has_decent_city_resources = 1
-
-
 
         has_harbor = 0
         for harbor_type in Harbor:
@@ -274,10 +270,7 @@ class Winner(ExpectimaxBaselinePlayer):
         values[7] = has_decent_settlement_resources
         values[8] = has_decent_city_resources
 
-
         return np.dot(values, weights)
-
-        # return self.weighted_probabilities_heuristic(state)
 
 
     def heuristic_first_phase(self, state, weights):
