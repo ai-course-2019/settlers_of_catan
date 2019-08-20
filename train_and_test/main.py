@@ -45,8 +45,8 @@ def clean_previous_images():
 def execute_game(plot_map=True):
     seed = None
     timeout_seconds = 5
-    p0 = Winner(0, seed, 5)
-    p1 = ExpectimaxWeightedProbabilitiesPlayer(1)
+    p0 = Winner(0, seed, timeout_seconds=3)
+    p1 = ExpectimaxWeightedProbabilitiesWithFilterPlayer(1, timeout_seconds=3)
     p2 = RandomPlayer(2)
     p3 = RandomPlayer(3)
     players = [p0, p1, p2, p3]
@@ -141,7 +141,7 @@ def run_n_games(n):
     count_wins = 0
     for i in range(n):
         count_wins += execute_game(plot_map=False)
-    print('\n' +"============================================================== \n"+ "number of wins: " + count_wins(str) + " out of " + n(str) + " games.")
+        print('\n' +"============================================================== \n"+ "number of wins: " + str(count_wins))
 
 
 

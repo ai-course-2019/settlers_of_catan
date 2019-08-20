@@ -17,14 +17,18 @@ from players.filters import *
 
 MAX_ITERATIONS = 10
 
-TOTAL_WEIGHTS = 34
+TOTAL_WEIGHTS = 35
+
+NUM_OF_WEIGHTS =7
 
 
 class Winner(ExpectimaxBaselinePlayer):
 
-    default_winning_weights = np.array([1, 100, 1, -0.1, 1])
+    default_winning_weights = np.array([0, 45, -1, -0.1, 1, 1,-1])
 
-    winning_weights = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 1, 1, 1, 1, 1, 1, 1, 1, -0.1, -0.1, -0.1, -0.1, 1, 1])
+    org_default_winning_weights = np.array([0, 45, -1, -0.1, 1, 1,-1, 0, 8, -1, -0.1, 3, 1,-2]) # 7 weights for first phase, 7 weights for last phase
+
+    # winning_weights = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 1, 1, 1, 1, 1, 1, 1, 1, -0.1, -0.1, -0.1, -0.1, 1, 1])
 
 
     def __init__(self, id, seed=None, timeout_seconds=5, weights=default_winning_weights):
@@ -32,7 +36,9 @@ class Winner(ExpectimaxBaselinePlayer):
 
         self.scores_by_player = None
         self._players_and_factors = None
-        self.winner_weights = None
+        self.winner_initialization_phase_weights = None
+        self.winner_first_phase_weights = None
+        self.winner_last_phase_weights = None
         self.expectimax_weights = {Colony.City: 2, Colony.Settlement: 1, Road.Paved: 0.4,
                                    DevelopmentCard.VictoryPoint: 1, DevelopmentCard.Knight: 2.0 / 3.0}
 
@@ -46,24 +52,51 @@ class Winner(ExpectimaxBaselinePlayer):
         :param given_weights:
         :return:
         """
-        self.winner_weights = np.ones(TOTAL_WEIGHTS)
+        self.winner_first_phase_weights = np.ones(TOTAL_WEIGHTS)
         for i in range(10):
-            self.winner_weights[i] = given_weights[0]
+            self.winner_first_phase_weights[i] = given_weights[0]
 
-        for i in range(10, 21):
-            self.winner_weights[i] = given_weights[1]
+        for i in range(10, 20):
+            self.winner_first_phase_weights[i] = given_weights[1]
+        self.winner_first_phase_weights[20] = given_weights[1] / 5
 
         for i in range(22, 23):
-            self.winner_weights[i] = given_weights[2]
-
-        self.winner_weights[32] = given_weights[2]
+            self.winner_first_phase_weights[i] = given_weights[2]
 
         for i in range(28, 32):
-            self.winner_weights[i] = given_weights[3]
+            self.winner_first_phase_weights[i] = given_weights[3]
 
-        self.winner_weights[33] = given_weights[4]
+        self.winner_first_phase_weights[32] = given_weights[4]
 
-        self.winner_weights[27] = 0
+        self.winner_first_phase_weights[33] = given_weights[5]
+
+        self.winner_first_phase_weights[34] = given_weights[6]
+
+        self.winner_first_phase_weights[27] = 0.5
+
+        #for last phase weights
+
+        # self.winner_last_phase_weights = np.ones(TOTAL_WEIGHTS)
+        # for i in range(10):
+        #     self.winner_last_phase_weights[i] = given_weights[0+NUM_OF_WEIGHTS]
+        #
+        # for i in range(10, 21):
+        #     self.winner_last_phase_weights[i] = given_weights[1+NUM_OF_WEIGHTS]
+        #
+        # for i in range(22, 23):
+        #     self.winner_last_phase_weights[i] = given_weights[2+NUM_OF_WEIGHTS]
+        #
+        #
+        # for i in range(28, 32):
+        #     self.winner_last_phase_weights[i] = given_weights[3+NUM_OF_WEIGHTS]
+        #
+        #     self.winner_last_phase_weights[32] = given_weights[4+NUM_OF_WEIGHTS]
+        #
+        # self.winner_last_phase_weights[33] = given_weights[5+NUM_OF_WEIGHTS]
+        #
+        # self.winner_first_phase_weights[34] = given_weights[6 +NUM_OF_WEIGHTS]
+        #
+        # self.winner_last_phase_weights[27] = 0.5
 
 
 
@@ -186,9 +219,9 @@ class Winner(ExpectimaxBaselinePlayer):
         if state.is_initialisation_phase():
             return self.heuristic_initialisation_phase(state)
         if self.in_first_phase(state):
-            return self.heuristic_first_phase(state, self.winner_weights)
+            return self.heuristic_first_phase(state, self.winner_first_phase_weights)
 
-        return self.heuristic_final_phase(state)
+        return self.heuristic_final_phase(state, self.winner_last_phase_weights)
 
 
     def in_first_phase(self, state=None):
@@ -215,7 +248,7 @@ class Winner(ExpectimaxBaselinePlayer):
 
 
         has_decent_settlement_resources = 0
-        if (brick_expectation >= state.probabilities_by_dice_values[decent]) and lumber_expectation >= state.probabilities_by_dice_values[decent] and wool_expectation >= state.probabilities_by_dice_values[4] and grain_expectation >= state.probabilities_by_dice_values[4]:
+        if (brick_expectation >= state.probabilities_by_dice_values[decent]) and lumber_expectation >= state.probabilities_by_dice_values[decent] and wool_expectation >= state.probabilities_by_dice_values[decent] and grain_expectation >= state.probabilities_by_dice_values[decent]:
             has_decent_settlement_resources = 1
 
 
@@ -306,7 +339,7 @@ class Winner(ExpectimaxBaselinePlayer):
 
         # average and max difference between player's VP, and other's VP. should be with negative weights.
         values[22] = Winner.get_avg_vp_difference(scores_by_players, self)  # Avg VP diff
-        values[23] = Winner.get_max_vp_difference(scores_by_players, self)  # Max VP diff
+        values[23] = Winner.get_vp_diff(scores_by_players, self)  # Max VP diff
 
         values[24] = 1 if self.can_settle_settlement() else 0
         values[25] = 1 if self.can_settle_city() else 0
@@ -332,25 +365,25 @@ class Winner(ExpectimaxBaselinePlayer):
         # the other heuristic
         values[33] = self.weighted_probabilities_heuristic(state)
 
+        #difference between number of exposed knights.
+        values[34] = self.get_exposed_knights_diff(self, state)
+
+
         values_debug = np.multiply(values,weights)
-        values_debug = 0
+        debug = 0
 
         return np.dot(values, weights)
 
 
-    def heuristic_final_phase(self, state):
+    def heuristic_final_phase(self, state, weights):
+
         scores_by_players = state.get_scores_by_player()
-        can_build_dev_card = 1 if self.has_resources_for_development_card() else 0
+        permanent_score = self.get_victory_point_development_cards_count() + state.board.get_colonies_score(self)
 
-        resource_expectation = Winner.get_resource_expectation(self, state)
+        score = scores_by_players[self]
 
-        return scores_by_players[self]
-
-        # return 2 * scores_by_players[self] + 4 * can_build_dev_card + sum([resource_expectation[Resource.Brick],
-        #                                                                    resource_expectation[Resource.Lumber],
-        #                                                                    resource_expectation[Resource.Wool],
-        #                                                                    resource_expectation[Resource.Grain],
-        #                                                                    resource_expectation[Resource.Ore]])
+        #return self.heuristic_first_phase(state, weights)
+        return score + permanent_score
 
 
     @staticmethod
@@ -423,11 +456,20 @@ class Winner(ExpectimaxBaselinePlayer):
 
 
     @staticmethod
-    def get_max_vp_difference(score_by_player, player):
+    def get_vp_diff(score_by_player, player):
         """
         :return: the maximal difference between the player's vp, and other players vp.
         """
-        return max((score_by_player[player] - score_by_player[other]) for other in score_by_player.keys() if other != player)
+        max_other = max(score_by_player[other] for other in score_by_player.keys() if other != player)
+        return max_other - score_by_player[player]
+
+        #return max((score_by_player[player] - score_by_player[other]) for other in score_by_player.keys() if other != player)
+
+
+    @staticmethod
+    def get_exposed_knights_diff(player, state):
+        max_other_knights = max(other.get_exposed_knights_count() for other in state.players if other != player)
+        return max_other_knights - player.get_exposed_knights_count()
 
 
     def filter_moves(self, seed, branching_factor=3459):
