@@ -118,9 +118,6 @@ class CatanState(AbstractState):
         return moves
 
     def get_random_move(self):
-        if self.is_initialisation_phase():
-            return self._get_initialisation_moves()
-
         if self.current_dice_number != 7:
             move = CatanMove(self.board.get_robber_land())
         else:
@@ -132,9 +129,9 @@ class CatanState(AbstractState):
             move = self._get_random_dev_card_exposure_move(move, player)
         move = self._get_random_trade_move(move, player)
         move = self._get_random_paths_move(move, player)
-        move = np.random.choice(self._get_all_possible_settlements_moves([move]))
-        move = np.random.choice(self._get_all_possible_cities_moves([move]))
-        move = np.random.choice(self._get_all_possible_development_cards_purchase_count_moves([move]))
+        move = self._get_random_settlements_move(move, player)
+        move = self._get_random_cities_move(move, player)
+        move = self._get_random_card_purchases_count_move(move, player)
         return move
 
     def make_move(self, move: CatanMove):
@@ -584,6 +581,20 @@ class CatanState(AbstractState):
                 options.append(option)
         return options
 
+    def _get_random_settlements_move(self, move: CatanMove, player):
+        self._pretend_to_make_a_move(move)
+        locations = self.board.get_settleable_locations_by_player(player)
+        num_settlements = min(len(locations), player.amount_of_settlements_can_afford())
+        new_settlements_locations = []
+        if num_settlements > 0:
+            num_settlements = np.random.randint(num_settlements)
+            for i in range(num_settlements):
+                j = np.random.randint(len(locations))
+                new_settlements_locations.append(locations.pop(j))
+        self._unpretend_to_make_a_move(move)
+        move.locations_to_be_set_to_settlements = new_settlements_locations
+        return move
+
     def _get_all_possible_settlements_moves(self, moves: List[CatanMove]) -> List[CatanMove]:
         player = self.get_current_player()
         new_moves = []
@@ -598,6 +609,21 @@ class CatanState(AbstractState):
                     new_moves.append(new_move)
             self._unpretend_to_make_a_move(move)
         return moves + new_moves
+
+    def _get_random_cities_move(self, move: CatanMove, player):
+        self._pretend_to_make_a_move(move)
+        locations = self.board.get_settlements_by_player(player)
+        num_cities = min(len(locations), player.amount_of_cities_can_afford())
+        new_cities_locations = []
+        if num_cities > 0:
+            num_cities = np.random.randint(num_cities)
+
+            for i in range(num_cities):
+                j = np.random.randint(len(locations))
+                new_cities_locations.append(locations.pop(j))
+        self._unpretend_to_make_a_move(move)
+        move.locations_to_be_set_to_cities = new_cities_locations
+        return move
 
     def _get_all_possible_cities_moves(self, moves: List[CatanMove]) -> List[CatanMove]:
         player = self.get_current_player()
@@ -641,13 +667,24 @@ class CatanState(AbstractState):
             option_with_curr_location.append(locations[min_location_index])
         return options_with_curr_location + options_without_curr_location
 
+    def _get_random_card_purchases_count_move(self, move, player):
+        self._pretend_to_make_a_move(move)
+        num_cards = min([player.get_resource_count(Resource.Wool),
+                         player.get_resource_count(Resource.Grain),
+                         player.get_resource_count(Resource.Ore)])
+        if num_cards > 0:
+            num_cards = np.random.randint(min(num_cards, len(self._dev_cards)))
+        self._unpretend_to_make_a_move(move)
+        move.development_cards_to_be_purchased_count += num_cards
+        return move
+
     def _get_all_possible_development_cards_purchase_count_moves(self, moves: List[CatanMove]) -> List[CatanMove]:
         player = self.get_current_player()
         new_moves = []
         for move in moves:
             self._pretend_to_make_a_move(move)
             if (player.has_resources_for_development_card() and
-                        len(self._dev_cards) > move.development_cards_to_be_purchased_count):
+                    len(self._dev_cards) > move.development_cards_to_be_purchased_count):
                 new_move = copy.deepcopy(move)
                 new_move.development_cards_to_be_purchased_count += 1
                 new_moves.append(new_move)
