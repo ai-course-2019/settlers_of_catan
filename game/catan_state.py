@@ -130,7 +130,7 @@ class CatanState(AbstractState):
         player = self.get_current_player()
         if player.has_unexposed_development_card():
             move = self._get_random_dev_card_exposure_move(move, player)
-        move = np.random.choice(self._get_all_possible_trade_moves([move]))
+        move = self._get_random_trade_move(move, player)
         move = self._get_random_paths_move(move, player)
         move = np.random.choice(self._get_all_possible_settlements_moves([move]))
         move = np.random.choice(self._get_all_possible_cities_moves([move]))
@@ -289,6 +289,30 @@ class CatanState(AbstractState):
         if self.board.is_player_on_harbor(curr_player, Harbor.HarborGeneric):
             return 3
         return 4
+
+
+    def _get_random_trade_move(self, move: CatanMove, player):
+        max_trades = np.random.randint(10)
+        for _ in range(max_trades):
+            self._pretend_to_make_a_move(move)
+            resources = [source_resource for source_resource in Resource
+                         if int(player.get_resource_count(source_resource) /
+                                self._calc_curr_player_trade_ratio(source_resource)) > 0]
+            if len(resources) == 0:
+                self._unpretend_to_make_a_move(move)
+                break
+            resource = np.random.choice(resources)
+            target = np.random.randint(len(Resource))
+            while target == resource.value:
+                target = np.random.randint(len(Resource))
+            trade = ResourceExchange(source_resource=resource,
+                                     target_resource=Resource(target),
+                                     count=1)
+            self._unpretend_to_make_a_move(move)
+            move.resources_exchanges.append(trade)
+
+        return move
+
 
     def _get_all_possible_trade_moves(self, moves: List[CatanMove]) -> List[CatanMove]:
         """
@@ -517,11 +541,9 @@ class CatanState(AbstractState):
         if i == 0:
             return set()
         paths_nearby = self.board.get_unpaved_paths_near_player(player)
-        try:
-            curr_path_index = np.random.randint(len(paths_nearby))
-        except:
-            print(len(paths_nearby))
-            raise Exception
+        if len(paths_nearby) == 0:
+            return set()
+        curr_path_index = np.random.randint(len(paths_nearby))
         curr_path = paths_nearby[curr_path_index]
 
         if i == 1:
