@@ -54,8 +54,12 @@ class MCTS:
 
     def _simulate(self, node):
         "Returns the result of a random simulation (to completion) of `node`"
+        import time
+        t0 = time.time()
         while True:
             if node.is_terminal():
+                t1 = time.time()
+                print(t1-t0)
                 return node.result()
             node = node.find_random_child()
 
