@@ -228,7 +228,7 @@ class Winner(ExpectimaxBaselinePlayer):
             return -inf
         if state.is_initialisation_phase():
             return self.heuristic_initialisation_phase(state)
-        if self.in_first_phase(state):
+        if self.in_first_phase():
             return self.heuristic_first_phase(state, self.winner_first_phase_weights)
 
         return self.heuristic_final_phase(state, self.winner_last_phase_weights)
