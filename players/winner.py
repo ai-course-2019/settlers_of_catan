@@ -24,15 +24,15 @@ NUM_OF_WEIGHTS =7
 
 class Winner(ExpectimaxBaselinePlayer):
 
-    default_winning_weights = np.array([0, 45, -1, -0.1, 1, 1,-1])
+    # default_winning_weights = np.array([0, 45, -1, -0.1, 1, 1,-1])
 
-    org_default_winning_weights = np.array([0, 45, -1, -0.1, 1, 1,-1, 0, 8, -1, -0.1, 3, 1,-2]) # 7 weights for first phase, 7 weights for last phase
+    default_winning_weights = np.array([0, 45, -1, -0.1, 1, 1,-1, 0, 8, -1, -0.1, 3, 1,-2]) # 7 weights for first phase, 7 weights for last phase
 
     # winning_weights = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 1, 1, 1, 1, 1, 1, 1, 1, -0.1, -0.1, -0.1, -0.1, 1, 1])
 
 
     def __init__(self, id, seed=None, timeout_seconds=5, weights=default_winning_weights):
-        super().__init__(id=id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=self.filter_moves(seed))
+        super().__init__(id=id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.winning_heuristic, filter_moves=self.filter_moves(seed))
 
         self.scores_by_player = None
         self._players_and_factors = None
@@ -76,27 +76,27 @@ class Winner(ExpectimaxBaselinePlayer):
 
         #for last phase weights
 
-        # self.winner_last_phase_weights = np.ones(TOTAL_WEIGHTS)
-        # for i in range(10):
-        #     self.winner_last_phase_weights[i] = given_weights[0+NUM_OF_WEIGHTS]
-        #
-        # for i in range(10, 21):
-        #     self.winner_last_phase_weights[i] = given_weights[1+NUM_OF_WEIGHTS]
-        #
-        # for i in range(22, 23):
-        #     self.winner_last_phase_weights[i] = given_weights[2+NUM_OF_WEIGHTS]
-        #
-        #
-        # for i in range(28, 32):
-        #     self.winner_last_phase_weights[i] = given_weights[3+NUM_OF_WEIGHTS]
-        #
-        #     self.winner_last_phase_weights[32] = given_weights[4+NUM_OF_WEIGHTS]
-        #
-        # self.winner_last_phase_weights[33] = given_weights[5+NUM_OF_WEIGHTS]
-        #
-        # self.winner_first_phase_weights[34] = given_weights[6 +NUM_OF_WEIGHTS]
-        #
-        # self.winner_last_phase_weights[27] = 0.5
+        self.winner_last_phase_weights = np.ones(TOTAL_WEIGHTS)
+        for i in range(10):
+            self.winner_last_phase_weights[i] = given_weights[0+NUM_OF_WEIGHTS]
+
+        for i in range(10, 21):
+            self.winner_last_phase_weights[i] = given_weights[1+NUM_OF_WEIGHTS]
+
+        for i in range(22, 23):
+            self.winner_last_phase_weights[i] = given_weights[2+NUM_OF_WEIGHTS]
+
+
+        for i in range(28, 32):
+            self.winner_last_phase_weights[i] = given_weights[3+NUM_OF_WEIGHTS]
+
+            self.winner_last_phase_weights[32] = given_weights[4+NUM_OF_WEIGHTS]
+
+        self.winner_last_phase_weights[33] = given_weights[5+NUM_OF_WEIGHTS]
+
+        self.winner_first_phase_weights[34] = given_weights[6 +NUM_OF_WEIGHTS]
+
+        self.winner_last_phase_weights[27] = 0.5
 
 
 
@@ -206,7 +206,7 @@ class Winner(ExpectimaxBaselinePlayer):
         return resources_to_drop
 
 
-    def tomeristic(self, state: CatanState):
+    def winning_heuristic(self, state: CatanState):
         # as discussed with Shaul, this isn't zero-sum heuristic, but a max-gain approach where only own player's
         # value is is taken in account
         self.scores_by_player = state.get_scores_by_player_indexed()
