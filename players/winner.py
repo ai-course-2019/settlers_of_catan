@@ -76,27 +76,27 @@ class Winner(ExpectimaxBaselinePlayer):
 
         #for last phase weights
 
-        self.winner_last_phase_weights = np.ones(TOTAL_WEIGHTS)
-        for i in range(10):
-            self.winner_last_phase_weights[i] = given_weights[0+NUM_OF_WEIGHTS]
-
-        for i in range(10, 21):
-            self.winner_last_phase_weights[i] = given_weights[1+NUM_OF_WEIGHTS]
-
-        for i in range(22, 23):
-            self.winner_last_phase_weights[i] = given_weights[2+NUM_OF_WEIGHTS]
-
-
-        for i in range(28, 32):
-            self.winner_last_phase_weights[i] = given_weights[3+NUM_OF_WEIGHTS]
-
-            self.winner_last_phase_weights[32] = given_weights[4+NUM_OF_WEIGHTS]
-
-        self.winner_last_phase_weights[33] = given_weights[5+NUM_OF_WEIGHTS]
-
-        self.winner_first_phase_weights[34] = given_weights[6 +NUM_OF_WEIGHTS]
-
-        self.winner_last_phase_weights[27] = 0.5
+        # self.winner_last_phase_weights = np.ones(TOTAL_WEIGHTS)
+        # for i in range(10):
+        #     self.winner_last_phase_weights[i] = given_weights[0+NUM_OF_WEIGHTS]
+        #
+        # for i in range(10, 21):
+        #     self.winner_last_phase_weights[i] = given_weights[1+NUM_OF_WEIGHTS]
+        #
+        # for i in range(22, 23):
+        #     self.winner_last_phase_weights[i] = given_weights[2+NUM_OF_WEIGHTS]
+        #
+        #
+        # for i in range(28, 32):
+        #     self.winner_last_phase_weights[i] = given_weights[3+NUM_OF_WEIGHTS]
+        #
+        #     self.winner_last_phase_weights[32] = given_weights[4+NUM_OF_WEIGHTS]
+        #
+        # self.winner_last_phase_weights[33] = given_weights[5+NUM_OF_WEIGHTS]
+        #
+        # self.winner_first_phase_weights[34] = given_weights[6 +NUM_OF_WEIGHTS]
+        #
+        # self.winner_last_phase_weights[27] = 0.5
 
 
 
