@@ -74,11 +74,11 @@ def execute_game(i, iterations, plot_map=True):
 
 
 def run_multiple_games_with_different_iterations():
-    # for i in range(20):
-    #     execute_game(i+1, 100, plot_map=False)
+    for i in range(20):
+        execute_game(i+1, 10, plot_map=False)
     # for j in range(10):
     #     execute_game(j+1, 1000, plot_map=False)
-    execute_game(1, 100, plot_map=False)
+    # execute_game(1, 100, plot_map=False)
 
 if __name__ == '__main__':
     run_multiple_games_with_different_iterations()
