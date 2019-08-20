@@ -17,35 +17,87 @@ from players.filters import *
 
 MAX_ITERATIONS = 10
 
+TOTAL_WEIGHTS = 35
+
+NUM_OF_WEIGHTS =7
+
 
 class Winner(ExpectimaxBaselinePlayer):
 
-    default_winning_weights = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 1, 0, 1, 1, 1, 1, 1, 1, -0.1, -0.1, -0.1, -0.1, 1, 1])
+    default_winning_weights = np.array([0, 45, -1, -0.1, 1, 1,-1])
+
+    org_default_winning_weights = np.array([0, 45, -1, -0.1, 1, 1,-1, 0, 8, -1, -0.1, 3, 1,-2]) # 7 weights for first phase, 7 weights for last phase
+
+    # winning_weights = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 1, 1, 1, 1, 1, 1, 1, 1, -0.1, -0.1, -0.1, -0.1, 1, 1])
 
 
     def __init__(self, id, seed=None, timeout_seconds=5, weights=default_winning_weights):
-        super().__init__(id=id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=self.filter_moves(seed), filter_random_moves=create_monte_carlo_filter(seed, 10))
+        super().__init__(id=id, seed=seed, timeout_seconds=timeout_seconds, heuristic=self.tomeristic, filter_moves=self.filter_moves(seed))
 
         self.scores_by_player = None
         self._players_and_factors = None
-        self.winner_weights = weights
+        self.winner_initialization_phase_weights = None
+        self.winner_first_phase_weights = None
+        self.winner_last_phase_weights = None
         self.expectimax_weights = {Colony.City: 2, Colony.Settlement: 1, Road.Paved: 0.4,
                                    DevelopmentCard.VictoryPoint: 1, DevelopmentCard.Knight: 2.0 / 3.0}
 
+        self.initialize_weights(weights)
 
-    def initialize_weights(self):
+
+    def initialize_weights(self, given_weights):
+        """
+        initializes a np.array of weights for our heuristic.
+        the initialization is based on the given weights.
+        :param given_weights:
+        :return:
+        """
+        self.winner_first_phase_weights = np.ones(TOTAL_WEIGHTS)
         for i in range(10):
-            self.winner_weights[i] = 0
+            self.winner_first_phase_weights[i] = given_weights[0]
 
-        # heavy weights for resource expectation
         for i in range(10, 20):
-            self.winner_weights[i] = 100
+            self.winner_first_phase_weights[i] = given_weights[1]
+        self.winner_first_phase_weights[20] = given_weights[1] / 5
 
-        self.winner_weights[21] = 0
+        for i in range(22, 23):
+            self.winner_first_phase_weights[i] = given_weights[2]
 
-        # light (negative) weights for turns to get resources for specific pieces.
         for i in range(28, 32):
-            self.winner_weights[i] = -0.1
+            self.winner_first_phase_weights[i] = given_weights[3]
+
+        self.winner_first_phase_weights[32] = given_weights[4]
+
+        self.winner_first_phase_weights[33] = given_weights[5]
+
+        self.winner_first_phase_weights[34] = given_weights[6]
+
+        self.winner_first_phase_weights[27] = 0.5
+
+        #for last phase weights
+
+        # self.winner_last_phase_weights = np.ones(TOTAL_WEIGHTS)
+        # for i in range(10):
+        #     self.winner_last_phase_weights[i] = given_weights[0+NUM_OF_WEIGHTS]
+        #
+        # for i in range(10, 21):
+        #     self.winner_last_phase_weights[i] = given_weights[1+NUM_OF_WEIGHTS]
+        #
+        # for i in range(22, 23):
+        #     self.winner_last_phase_weights[i] = given_weights[2+NUM_OF_WEIGHTS]
+        #
+        #
+        # for i in range(28, 32):
+        #     self.winner_last_phase_weights[i] = given_weights[3+NUM_OF_WEIGHTS]
+        #
+        #     self.winner_last_phase_weights[32] = given_weights[4+NUM_OF_WEIGHTS]
+        #
+        # self.winner_last_phase_weights[33] = given_weights[5+NUM_OF_WEIGHTS]
+        #
+        # self.winner_first_phase_weights[34] = given_weights[6 +NUM_OF_WEIGHTS]
+        #
+        # self.winner_last_phase_weights[27] = 0.5
+
 
 
     def choose_resources_to_drop(self) -> Dict[Resource, int]:
@@ -167,9 +219,9 @@ class Winner(ExpectimaxBaselinePlayer):
         if state.is_initialisation_phase():
             return self.heuristic_initialisation_phase(state)
         if self.in_first_phase(state):
-            return self.heuristic_first_phase(state, self.winner_weights)
+            return self.heuristic_first_phase(state, self.winner_first_phase_weights)
 
-        return self.heuristic_final_phase(state)
+        return self.heuristic_final_phase(state, self.winner_last_phase_weights)
 
 
     def in_first_phase(self, state=None):
@@ -177,12 +229,58 @@ class Winner(ExpectimaxBaselinePlayer):
         return my_victory_points <= 7
 
 
-    def heuristic_initialisation_phase(self, state):
-        # return sum(self.get_resource_expectation(self, state).values())
-        return self.weighted_probabilities_heuristic(state)
+    def heuristic_initialisation_phase(self, state, weights=np.ones(10)):
+
+        resource_expectation = self.get_resource_expectation(self, state)
+        total_expectation = sum(resource_expectation.values())
+        brick_expectation = resource_expectation[Resource.Brick]
+        lumber_expectation = resource_expectation[Resource.Lumber]
+        wool_expectation = resource_expectation[Resource.Wool]
+        grain_expectation = resource_expectation[Resource.Grain]
+        ore_expectation = resource_expectation[Resource.Ore]
+
+        # define which probabilities are considered  'decent'. for example: if decent = 4, then 4,5,6,8,9,10 are considered decent
+        decent = 4
+
+        has_decent_road_resources = 0
+        if brick_expectation >= state.probabilities_by_dice_values[decent] and lumber_expectation >= state.probabilities_by_dice_values[decent]:
+            has_decent_road_resources = 1
 
 
-    def heuristic_first_phase(self, state, weights=default_winning_weights):
+        has_decent_settlement_resources = 0
+        if (brick_expectation >= state.probabilities_by_dice_values[decent]) and lumber_expectation >= state.probabilities_by_dice_values[decent] and wool_expectation >= state.probabilities_by_dice_values[decent] and grain_expectation >= state.probabilities_by_dice_values[decent]:
+            has_decent_settlement_resources = 1
+
+
+        has_decent_city_resources = 0
+        if ore_expectation >= state.probabilities_by_dice_values[decent+1] and grain_expectation >= state.probabilities_by_dice_values[decent]:
+            has_decent_city_resources = 1
+
+
+
+        has_harbor = 0
+        for harbor_type in Harbor:
+            if state.board.is_player_on_harbor(self, harbor_type):
+                has_harbor += 1
+
+        values = np.zeros(10)
+        values[0] = brick_expectation
+        values[1] = lumber_expectation
+        values[2] = wool_expectation
+        values[3] = grain_expectation
+        values[4] = ore_expectation
+        values[5] = total_expectation
+        values[6] = has_decent_road_resources
+        values[7] = has_decent_settlement_resources
+        values[8] = has_decent_city_resources
+
+
+        return np.dot(values, weights)
+
+        # return self.weighted_probabilities_heuristic(state)
+
+
+    def heuristic_first_phase(self, state, weights):
         """
         prefer higher expected resource yield, rather than VP.
         also reward having places to build settlements.
@@ -191,7 +289,7 @@ class Winner(ExpectimaxBaselinePlayer):
         :return: returns a score for this state.
         """
 
-        values = np.zeros(34)
+        values = np.zeros(TOTAL_WEIGHTS)
         board = state.board
         scores_by_players = state.get_scores_by_player()
         currentResouces = self.resources
@@ -237,11 +335,11 @@ class Winner(ExpectimaxBaselinePlayer):
         values[20] = np.sum(values[i] for i in range(10, 15))
 
         # the number of unexposed development cards, except for VP dev cards. (num dev cards)
-        values[21] = len(self.unexposed_development_cards) - self.unexposed_development_cards[DevelopmentCard.VictoryPoint]
+        values[21] = sum(self.unexposed_development_cards.values()) + sum(self.exposed_development_cards.values()) - self.unexposed_development_cards[DevelopmentCard.VictoryPoint]
 
         # average and max difference between player's VP, and other's VP. should be with negative weights.
         values[22] = Winner.get_avg_vp_difference(scores_by_players, self)  # Avg VP diff
-        values[23] = Winner.get_max_vp_difference(scores_by_players, self)  # Max VP diff
+        values[23] = Winner.get_vp_diff(scores_by_players, self)  # Max VP diff
 
         values[24] = 1 if self.can_settle_settlement() else 0
         values[25] = 1 if self.can_settle_city() else 0
@@ -261,28 +359,31 @@ class Winner(ExpectimaxBaselinePlayer):
                                                resource_expectation,
                                                ResourceAmounts.development_card)
 
+        # our VP
         values[32] = scores_by_players[self]
 
+        # the other heuristic
         values[33] = self.weighted_probabilities_heuristic(state)
 
-        values = np.multiply(values, weights)
+        #difference between number of exposed knights.
+        values[34] = self.get_exposed_knights_diff(self, state)
+
+
+        values_debug = np.multiply(values,weights)
+        debug = 0
 
         return np.dot(values, weights)
 
 
-    def heuristic_final_phase(self, state):
+    def heuristic_final_phase(self, state, weights):
+
         scores_by_players = state.get_scores_by_player()
-        can_build_dev_card = 1 if self.has_resources_for_development_card() else 0
+        permanent_score = self.get_victory_point_development_cards_count() + state.board.get_colonies_score(self)
 
-        resource_expectation = Winner.get_resource_expectation(self, state)
+        score = scores_by_players[self]
 
-        return scores_by_players[self]
-
-        # return 2 * scores_by_players[self] + 4 * can_build_dev_card + sum([resource_expectation[Resource.Brick],
-        #                                                                    resource_expectation[Resource.Lumber],
-        #                                                                    resource_expectation[Resource.Wool],
-        #                                                                    resource_expectation[Resource.Grain],
-        #                                                                    resource_expectation[Resource.Ore]])
+        #return self.heuristic_first_phase(state, weights)
+        return score + permanent_score
 
 
     @staticmethod
@@ -355,17 +456,26 @@ class Winner(ExpectimaxBaselinePlayer):
 
 
     @staticmethod
-    def get_max_vp_difference(score_by_player, player):
+    def get_vp_diff(score_by_player, player):
         """
         :return: the maximal difference between the player's vp, and other players vp.
         """
-        return max((score_by_player[player] - score_by_player[other]) for other in score_by_player.keys() if other != player)
+        max_other = max(score_by_player[other] for other in score_by_player.keys() if other != player)
+        return max_other - score_by_player[player]
+
+        #return max((score_by_player[player] - score_by_player[other]) for other in score_by_player.keys() if other != player)
+
+
+    @staticmethod
+    def get_exposed_knights_diff(player, state):
+        max_other_knights = max(other.get_exposed_knights_count() for other in state.players if other != player)
+        return max_other_knights - player.get_exposed_knights_count()
 
 
     def filter_moves(self, seed, branching_factor=3459):
         a = create_monte_carlo_filter(seed, branching_factor)
         b = self.filter_out_useless_trades()
-        c = create_bad_robber_placement_filter(self)
+        c = self.filter_out_robber_placements_on_self()
 
 
         def spaghetti_filter(all_moves, state):
@@ -411,6 +521,27 @@ class Winner(ExpectimaxBaselinePlayer):
 
         return useless_trades_filter
 
+
+    def filter_out_robber_placements_on_self(self):
+
+        def is_good_move(state, move) -> bool:
+            if move.robber_placement_land == state.board.get_robber_land():
+                return True
+            for location in move.robber_placement_land.locations:
+                if state.board.is_colonised_by(state.get_current_player(), location):
+                    return False
+            return True
+
+
+        def bad_robber_placement_filter(all_moves, state):
+            assert state is not None
+            good_moves = [move for move in all_moves if is_good_move(state, move)]
+            if not good_moves:
+                return all_moves
+            return good_moves
+
+
+        return bad_robber_placement_filter
 
     def amount_of_development_card_can_afford(self):
         return min(self.resources[Resource.Ore],

@@ -117,6 +117,26 @@ class CatanState(AbstractState):
         moves = self._get_all_possible_development_cards_purchase_count_moves(moves)
         return moves
 
+    def get_random_move(self):
+        if self.is_initialisation_phase():
+            return self._get_initialisation_moves()
+
+        if self.current_dice_number != 7:
+            move = CatanMove(self.board.get_robber_land())
+        else:
+            moves = [CatanMove(land) for land in self.board.get_lands_to_place_robber_on()]
+            move = moves[np.random.randint(len(moves))]
+
+        player = self.get_current_player()
+        if player.has_unexposed_development_card():
+            move = self._get_random_dev_card_exposure_move(move, player)
+        move = self._get_random_trade_move(move, player)
+        move = self._get_random_paths_move(move, player)
+        move = np.random.choice(self._get_all_possible_settlements_moves([move]))
+        move = np.random.choice(self._get_all_possible_cities_moves([move]))
+        move = np.random.choice(self._get_all_possible_development_cards_purchase_count_moves([move]))
+        return move
+
     def make_move(self, move: CatanMove):
         """
         apply move
@@ -195,7 +215,7 @@ class CatanState(AbstractState):
 
     def get_current_player_index(self):
         "returns the index of the current player"
-        return (self._current_player_index - 1) % len(self.players)
+        return self._current_player_index
 
     def pop_development_card(self) -> DevelopmentCard:
         return self._dev_cards.pop()
@@ -269,6 +289,30 @@ class CatanState(AbstractState):
         if self.board.is_player_on_harbor(curr_player, Harbor.HarborGeneric):
             return 3
         return 4
+
+
+    def _get_random_trade_move(self, move: CatanMove, player):
+        max_trades = np.random.randint(10)
+        for _ in range(max_trades):
+            self._pretend_to_make_a_move(move)
+            resources = [source_resource for source_resource in Resource
+                         if int(player.get_resource_count(source_resource) /
+                                self._calc_curr_player_trade_ratio(source_resource)) > 0]
+            if len(resources) == 0:
+                self._unpretend_to_make_a_move(move)
+                break
+            resource = np.random.choice(resources)
+            target = np.random.randint(len(Resource))
+            while target == resource.value:
+                target = np.random.randint(len(Resource))
+            trade = ResourceExchange(source_resource=resource,
+                                     target_resource=Resource(target),
+                                     count=1)
+            self._unpretend_to_make_a_move(move)
+            move.resources_exchanges.append(trade)
+
+        return move
+
 
     def _get_all_possible_trade_moves(self, moves: List[CatanMove]) -> List[CatanMove]:
         """
@@ -354,6 +398,52 @@ class CatanState(AbstractState):
         trades.append([min_resource_only_trade])
         return trades
 
+    def _get_random_dev_card_exposure_move(self, move: CatanMove, player) -> CatanMove:
+        cards = [None]
+        for card, a in player.unexposed_development_cards.items():
+            if card != DevelopmentCard.VictoryPoint and a > 0:
+                cards.append(card)
+        dev_card = np.random.choice(cards)
+        if dev_card == DevelopmentCard.Knight and move.robber_placement_land == self.board.get_robber_land():
+            lands = self.board.get_lands_to_place_robber_on()
+            land = lands[np.random.randint(len(lands))]
+            move.robber_placement_land = land
+        elif dev_card == DevelopmentCard.Monopoly:
+            num = np.random.randint(5)
+            if num == 0:
+                chosen_resource = Resource.Brick
+            elif num == 1:
+                chosen_resource = Resource.Lumber
+            elif num == 2:
+                chosen_resource = Resource.Wool
+            elif num == 3:
+                chosen_resource = Resource.Grain
+            else:
+                chosen_resource = Resource.Ore
+            move.monopoly_card = chosen_resource
+        elif dev_card == DevelopmentCard.YearOfPlenty:
+            chosen_resources = []
+            for i in range(2):
+                r = np.random.randint(5)
+                if r == 0:
+                    chosen_resources.append(Resource.Brick)
+                elif r == 1:
+                    chosen_resources.append(Resource.Lumber)
+                elif r == 2:
+                    chosen_resources.append(Resource.Wool)
+                elif r == 3:
+                    chosen_resources.append(Resource.Grain)
+                else:
+                    chosen_resources.append(Resource.Ore)
+            if chosen_resources[0] != chosen_resources[1]:  # two different cards
+                move.resources_updates[chosen_resources[0]] = 1
+                move.resources_updates[chosen_resources[1]] = 1
+            else:  # same card twice
+                move.resources_updates[chosen_resources[0]] = 2
+        move.development_card_to_be_exposed = dev_card
+        return move
+
+
     def _get_all_possible_development_cards_exposure_moves(self, moves: List[CatanMove]) -> List[CatanMove]:
         player = self.get_current_player()
         new_moves = []
@@ -409,6 +499,23 @@ class CatanState(AbstractState):
         new_moves = moves_without_monopoly + monopoly_applied_moves
         return moves + new_moves
 
+    def _get_random_paths_move(self, move: CatanMove, player):
+        min_paths = 0
+        paving_option = {}
+        if move.development_card_to_be_exposed == DevelopmentCard.RoadBuilding:
+            min_paths = 2
+        self._pretend_to_make_a_move(move)
+        if player.can_pave_road():
+            max_paths = player.amount_of_roads_can_afford()
+            if min_paths < max_paths:
+                num_roads_to_pave = np.random.randint(min_paths, max_paths)
+            else:
+                num_roads_to_pave = np.random.randint(max_paths)
+            paving_option = frozenset(self._get_random_paving_option(num_roads_to_pave, player))
+        self._unpretend_to_make_a_move(move)
+        move.paths_to_be_paved = paving_option
+        return move
+
     def _get_all_possible_paths_moves(self, moves: List[CatanMove]) -> List[CatanMove]:
         player = self.get_current_player()
         new_moves = []
@@ -429,6 +536,24 @@ class CatanState(AbstractState):
         return [move for move in moves + new_moves if
                 len(move.paths_to_be_paved) >=
                 2 * (move.development_card_to_be_exposed == DevelopmentCard.RoadBuilding)]  # c style
+
+    def _get_random_paving_option(self, i, player):
+        if i == 0:
+            return set()
+        paths_nearby = self.board.get_unpaved_paths_near_player(player)
+        if len(paths_nearby) == 0:
+            return set()
+        curr_path_index = np.random.randint(len(paths_nearby))
+        curr_path = paths_nearby[curr_path_index]
+
+        if i == 1:
+            return {curr_path}
+        self.board.set_path(player, curr_path, Road.Paved)  # put on board
+        option_given_curr_chosen = self._get_random_paving_option(i - 1, player)
+        option_given_curr_chosen.add(curr_path)
+        self.board.set_path(player, curr_path, Road.Unpaved)  # remove from board
+        return option_given_curr_chosen
+
 
     def _paths_options_up_to_i_chosen(self, i) -> List[List[Path]]:
         """
