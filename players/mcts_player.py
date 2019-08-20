@@ -26,7 +26,15 @@ class MCTSPlayer(AbstractPlayer):
         if len(next_moves) <= 1:
             return next_moves[0]
         if state.is_initialisation_phase():
-            return self._random_choice(next_moves)  # TODO: change to the better heuristic
+            best_move, best_score = None, 0
+            for move in next_moves:
+                state.make_move(move)
+                score = self.initialization_phase_heuaristic(state)
+                state.unmake_move(move)
+                if score > best_score:
+                    best_move = move
+                    best_score = score
+            return best_move
         mcts = MCTS(MCTSNode(state), next_moves, self.exploration_param)
         mcts.do_n_rollouts(self.iterations)
         return mcts.choose().move
@@ -85,6 +93,10 @@ class MCTSPlayer(AbstractPlayer):
             self.add_resources_and_piece_for_road()
 
         return resources_to_drop
+
+    def initialization_phase_heuaristic(self, state):
+        pass
+
 
 
     def drop_resources_in_final_phase(self):
