@@ -23,12 +23,14 @@ NUM_OF_WEIGHTS =7
 
 
 class Winner(ExpectimaxBaselinePlayer):
+    """
+    an AI player of the game Settlers Of Catan.
+    operates with heuristics, based on prior knowledge of the game, and experience.
+    """
 
-    # default_winning_weights = np.array([0, 45, -1, -0.1, 1, 1,-1])
+    # winning_weights_for_learning = np.array([0, 45, -1, -0.1, 1, 1,-1])
 
     default_winning_weights = np.array([0, 45, -1, -0.1, 1, 1,-1, 0, 8, -1, -0.1, 3, 1,-2]) # 7 weights for first phase, 7 weights for last phase
-
-    # winning_weights = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 1, 1, 1, 1, 1, 1, 1, 1, -0.1, -0.1, -0.1, -0.1, 1, 1])
 
 
     def __init__(self, id, seed=None, timeout_seconds=5, weights=default_winning_weights):
@@ -101,12 +103,17 @@ class Winner(ExpectimaxBaselinePlayer):
 
 
     def choose_resources_to_drop(self) -> Dict[Resource, int]:
+        """
+        a function to determine which resources should be discarded in case a 7 was rolled and we have too many cards in hand.
+        :return: a dictionary of resources : amount. indicating how many cards of each resources are to be discarded.
+        """
         if self.in_first_phase():
             return self.drop_resources_in_first_phase()
         return self.drop_resources_in_final_phase()
 
 
     def drop_resources_in_first_phase(self):
+
         resources_count = sum(self.resources.values())
         if resources_count < 8:
             return {}
@@ -207,8 +214,11 @@ class Winner(ExpectimaxBaselinePlayer):
 
 
     def winning_heuristic(self, state: CatanState):
-        # as discussed with Shaul, this isn't zero-sum heuristic, but a max-gain approach where only own player's
-        # value is is taken in account
+        """
+        our heuristic for winning the game! it is composed of 3 different heuristics.
+        :param state: the state of the game.
+        :return: a heuristic score for this state.
+        """
         self.scores_by_player = state.get_scores_by_player_indexed()
         my_score = self.scores_by_player[self.get_id()]
         if my_score >= 10:
@@ -224,7 +234,12 @@ class Winner(ExpectimaxBaselinePlayer):
         return self.heuristic_final_phase(state, self.winner_last_phase_weights)
 
 
-    def in_first_phase(self, state=None):
+    def in_first_phase(self):
+        """
+        indicates if we re in the first stages of the game, or in the final stages.
+        :param state:
+        :return:
+        """
         my_victory_points = self.scores_by_player[self.get_id()]
         return my_victory_points <= 7
 
@@ -369,14 +384,7 @@ class Winner(ExpectimaxBaselinePlayer):
 
 
     def heuristic_final_phase(self, state, weights):
-
-        scores_by_players = state.get_scores_by_player()
-        permanent_score = self.get_victory_point_development_cards_count() + state.board.get_colonies_score(self)
-
-        score = scores_by_players[self]
-
-        #return self.heuristic_first_phase(state, weights)
-        return score + permanent_score
+        return self.heuristic_first_phase(state, weights)
 
 
     @staticmethod
@@ -395,7 +403,6 @@ class Winner(ExpectimaxBaselinePlayer):
 
     @staticmethod
     def get_resource_expectation(player, state):
-        # TODO: check that this function works properly
         """
         calculates the expected resource yield per one turn per player.
         :return: a dictionary of the resource expectation of the given player.
@@ -455,8 +462,6 @@ class Winner(ExpectimaxBaselinePlayer):
         """
         max_other = max(score_by_player[other] for other in score_by_player.keys() if other != player)
         return max_other - score_by_player[player]
-
-        #return max((score_by_player[player] - score_by_player[other]) for other in score_by_player.keys() if other != player)
 
 
     @staticmethod
