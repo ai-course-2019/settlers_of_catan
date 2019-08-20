@@ -45,8 +45,8 @@ def clean_previous_images():
 def execute_game(plot_map=True):
     seed = None
     timeout_seconds = 5
-    p0 = Winner(0, seed, 5)
-    p1 = ExpectimaxWeightedProbabilitiesPlayer(1)
+    p0 = Winner(0, seed, timeout_seconds=3)
+    p1 = ExpectimaxWeightedProbabilitiesPlayer(1, timeout_seconds=3)
     p2 = RandomPlayer(2)
     p3 = RandomPlayer(3)
     players = [p0, p1, p2, p3]
@@ -73,7 +73,7 @@ def execute_game(plot_map=True):
         move_data = {k: v for k, v in move.__dict__.items() if (v and k != 'resources_updates') and not
         (k == 'robber_placement_land' and v == robber_placement) and not
                      (isinstance(v, dict) and sum(v.values()) == 0)}
-        logger.info('-| {}| turn: {:3} | move:{} |'.format(''.join('{} '.format(v) for v in score_by_player),
+        logger.info('| {}| turn: {:3} | move:{} |'.format(''.join('{} '.format(v) for v in score_by_player),
                                                           turn_count, move_data))
         if plot_map:
             image_name = 'turn_{}_scores_{}.png'.format(

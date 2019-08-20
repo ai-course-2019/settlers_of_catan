@@ -24,7 +24,9 @@ NUM_OF_WEIGHTS =7
 
 class Winner(ExpectimaxBaselinePlayer):
 
-    default_winning_weights = np.array([0, 100, -1, -0.1, 1, 1,-1, 0, 100, -1, -0.1, 4, 1,-2]) # 6 weights for first phase, 6 weights for last phase
+    default_winning_weights = np.array([0, 45, -1, -0.1, 1, 1,-1])
+
+    org_default_winning_weights = np.array([0, 45, -1, -0.1, 1, 1,-1, 0, 8, -1, -0.1, 3, 1,-2]) # 7 weights for first phase, 7 weights for last phase
 
     # winning_weights = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 1, 1, 1, 1, 1, 1, 1, 1, -0.1, -0.1, -0.1, -0.1, 1, 1])
 
@@ -54,8 +56,9 @@ class Winner(ExpectimaxBaselinePlayer):
         for i in range(10):
             self.winner_first_phase_weights[i] = given_weights[0]
 
-        for i in range(10, 21):
+        for i in range(10, 20):
             self.winner_first_phase_weights[i] = given_weights[1]
+        self.winner_first_phase_weights[20] = given_weights[1] / 5
 
         for i in range(22, 23):
             self.winner_first_phase_weights[i] = given_weights[2]
@@ -374,8 +377,13 @@ class Winner(ExpectimaxBaselinePlayer):
 
     def heuristic_final_phase(self, state, weights):
 
-        return self.heuristic_first_phase(state, weights)
-        #return scores_by_players[self]
+        scores_by_players = state.get_scores_by_player()
+        permanent_score = self.get_victory_point_development_cards_count() + state.board.get_colonies_score(self)
+
+        score = scores_by_players[self]
+
+        #return self.heuristic_first_phase(state, weights)
+        return score + permanent_score
 
 
     @staticmethod
