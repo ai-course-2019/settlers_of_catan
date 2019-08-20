@@ -86,7 +86,8 @@ def execute_game(plot_map=True):
                                }
     names = list(players_scores_by_names.keys())
     names.sort()
-    fileLogger.info('\n' + '\n'.join(' {:80} : {} '.format(str(name), players_scores_by_names[name])
+
+    fileLogger.info('-\n' + '\n'.join(' {:80} : {} '.format(str(name), players_scores_by_names[name])
                                      for name in names) +
                     '\n turns it took: {}\n'.format(turn_count) + ('-' * 156))
 
@@ -98,7 +99,13 @@ def execute_game(plot_map=True):
     excel_data_grabber(score_by_player[0], score_by_player[1], score_by_player[2], score_by_player[3], turn_count,
                        p0_type, p_others_type)
 
-    if (score_by_player[0] >= 10):
+    excel_output = ""
+    for i in range(len(players)):
+        player_output = str(players[i]) + "@" + str(score_by_player[i])
+        excel_output += player_output
+    fileLogger.info("|" + excel_output)
+
+    if score_by_player[0] >= 10:
         return 1
     else:
         return 0

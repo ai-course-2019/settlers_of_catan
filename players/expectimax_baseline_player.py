@@ -37,10 +37,11 @@ class ExpectimaxBaselinePlayer(AbstractPlayer):
             timeout_seconds=self._timeout_seconds,
             filter_moves=filter_moves)
 
+
     def choose_move(self, state: CatanState):
-        #self.expectimax_alpha_beta.start_turn_timer()
+        # self.expectimax_alpha_beta.start_turn_timer()
         best_move, move, depth = None, None, 1
-        #while not self.expectimax_alpha_beta.ran_out_of_time:
+        # while not self.expectimax_alpha_beta.ran_out_of_time:
         for i in range(3):
             best_move = move
             logger.info('starting depth {}'.format(depth))
@@ -100,3 +101,7 @@ class ExpectimaxBaselinePlayer(AbstractPlayer):
         :param filter_moves: a callable that given list of moves, returns a list of moves that will be further developed
         """
         self.expectimax_alpha_beta.filter_moves = filter_moves
+
+
+    def __str__(self):
+        return str(type(self)) + "@" + str(self._timeout_seconds)

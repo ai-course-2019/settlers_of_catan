@@ -8,7 +8,7 @@ from game.catan_moves import CatanMove
 class MCTS:
     "Monte Carlo tree searcher. First rollout the tree then choose a move."
 
-    def __init__(self, root: MCTSNode, moves, exploration_weight=1.4):
+    def __init__(self, root, moves, exploration_weight=1.4):
         assert not root.is_terminal()
         self.root = root
         for move in moves:
