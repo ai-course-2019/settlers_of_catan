@@ -296,4 +296,4 @@ class AbstractPlayer(abc.ABC):
         self.remove_resource(target_resource, count)
 
     def __repr__(self):
-        return str(type(self))
+        return str(self.__class__.__name__)

@@ -42,7 +42,7 @@ class ExpectimaxBaselinePlayer(AbstractPlayer):
         # self.expectimax_alpha_beta.start_turn_timer()
         best_move, move, depth = None, None, 1
         # while not self.expectimax_alpha_beta.ran_out_of_time:
-        for i in range(3):
+        for i in range(1):
             best_move = move
             logger.info('starting depth {}'.format(depth))
             move = self.expectimax_alpha_beta.get_best_move(state, max_depth=depth)
@@ -104,4 +104,4 @@ class ExpectimaxBaselinePlayer(AbstractPlayer):
 
 
     def __str__(self):
-        return str(type(self)) + "@" + str(self._timeout_seconds)
+        return str(self.__class__.__name__) + "@" + str(self._timeout_seconds)

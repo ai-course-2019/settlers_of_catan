@@ -217,5 +217,5 @@ class MCTSPlayer(AbstractPlayer):
         return my_victory_points <= 7
 
     def __str__(self):
-        return str(type(self)) + "@" + str(self.exploration_param) + "@" + str(self.iterations)
+        return str(self.__class__.__name__) + "@" + str(self.exploration_param) + "@" + str(self.iterations)
 

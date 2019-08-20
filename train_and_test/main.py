@@ -45,7 +45,7 @@ def clean_previous_images():
 def execute_game(plot_map=True):
     seed = None
     timeout_seconds = 5
-    p0 = Winner(id=0, seed=seed, timeout_seconds=3)
+    p0 = Winner(id=0, seed=seed, timeout_seconds=timeout_seconds)
     p1 = RandomPlayer(id=1)
     p2 = RandomPlayer(id=2)
     p3 = RandomPlayer(id=3)
@@ -61,7 +61,6 @@ def execute_game(plot_map=True):
         logger.info('----------------------p{}\'s turn----------------------'.format(state._current_player_index))
 
         turn_count += 1
-        print(str(turn_count))
         robber_placement = state.board.get_robber_land()
 
         move = state.get_current_player().choose_move(state)
@@ -104,7 +103,7 @@ def execute_game(plot_map=True):
     for i in range(len(players)):
         player_output = str(players[i]) + "@" + str(score_by_player[i])
         excel_output += player_output + "\n"
-    fileLogger.info("|%%%%%" + excel_output)
+    fileLogger.info("|\n#" + str(turn_count) + "\n" + excel_output)
 
     if score_by_player[0] >= 10:
         return 1
