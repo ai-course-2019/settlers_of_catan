@@ -1,11 +1,11 @@
 from math import ceil
 from typing import Dict
 
-from game.board import Harbor
+from game.board import Harbor, Board
 from game.catan_state import CatanState
 from game.resource import Resource, ResourceAmounts
 
-from players.abstract_player import AbstractPlayer
+from players.abstract_player import AbstractPlayer, Colony
 from algorithms.mcts import MCTS, MCTSNode
 from collections import Counter
 import numpy as np
@@ -143,7 +143,25 @@ class MCTSPlayer(AbstractPlayer):
 
         return np.dot(values, weights)
 
+    @staticmethod
+    def get_resource_expectation(player, state):
+        """
+        calculates the expected resource yield per one turn per player.
+        :return: a dictionary of the resource expectation of the given player.
+        each resource is a key, and it's value is that player's expected yield.
+        """
+        res_yield = {Colony.Settlement: 1, Colony.City: 2}
+        resources = {r: 0 for r in Resource}
 
+        for location in state.board.get_locations_colonised_by_player(player):
+            colony_yield = res_yield[state.board.get_colony_type_at_location(location)]
+            for land in state.board._roads_and_colonies.node[location][Board.lands]:  # The adjacent lands to the location we check
+                if land.resource is None:  # If this is a desert - do nothing
+                    continue
+                calc = colony_yield * state.probabilities_by_dice_values[land.dice_value]
+                resources[land.resource] += calc
+
+        return resources
 
     def drop_resources_in_final_phase(self):
         resources_count = sum(self.resources.values())
