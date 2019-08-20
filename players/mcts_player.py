@@ -216,3 +216,6 @@ class MCTSPlayer(AbstractPlayer):
         my_victory_points = self.scores_by_player[self.get_id()]
         return my_victory_points <= 7
 
+    def __str__(self):
+        return str(self.__class__.__name__) + "@" + str(self.exploration_param) + "@" + str(self.iterations)
+
