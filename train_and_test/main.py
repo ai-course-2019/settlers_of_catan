@@ -17,6 +17,8 @@ from players.winner import Winner
 A, B, C, D, E, F, G = [], [], [], [], [], [], []
 excel_file_name = 'NAME_NOT_SET_{}.xlsx'.format(time.time())
 
+TIME_OUT = 5
+
 
 def excel_data_grabber(a, b, c, d, e, f, g):
     global A, B, C, D, E, F, G
@@ -44,9 +46,9 @@ def clean_previous_images():
 
 def execute_game(plot_map=True):
     seed = None
-    timeout_seconds = 5
+    timeout_seconds = TIME_OUT
     p0 = Winner(id=0, seed=seed, timeout_seconds=timeout_seconds)
-    p1 = RandomPlayer(id=1)
+    p1 = ExpectimaxWeightedProbabilitiesWithFilterPlayer(id=1, seed=seed, timeout_seconds=timeout_seconds)
     p2 = RandomPlayer(id=2)
     p3 = RandomPlayer(id=3)
     players = [p0, p1, p2, p3]
@@ -73,7 +75,7 @@ def execute_game(plot_map=True):
         move_data = {k: v for k, v in move.__dict__.items() if (v and k != 'resources_updates') and not
         (k == 'robber_placement_land' and v == robber_placement) and not
                      (isinstance(v, dict) and sum(v.values()) == 0)}
-        logger.info('-| {}| turn: {:3} | move:{} |'.format(''.join('{} '.format(v) for v in score_by_player),
+        logger.info('| {}| turn: {:3} | move:{} |'.format(''.join('{} '.format(v) for v in score_by_player),
                                                           turn_count, move_data))
         if plot_map:
             image_name = 'turn_{}_scores_{}.png'.format(
@@ -87,9 +89,9 @@ def execute_game(plot_map=True):
     names = list(players_scores_by_names.keys())
     names.sort()
 
-    # fileLogger.info('\n' + '\n'.join(' {:80} : {} '.format(str(name), players_scores_by_names[name])
-    #                                  for name in names) +
-    #                 '\n turns it took: {}\n'.format(turn_count) + ('-' * 156))
+    fileLogger.info('\n' + '\n'.join(' {:80} : {} '.format(str(name), players_scores_by_names[name])
+                                     for name in names) +
+                    '\n turns it took: {}\n'.format(turn_count) + ('-' * 156))
 
     p0_type = type(p0).__name__
     p_others_type = type(p1).__name__
@@ -103,7 +105,7 @@ def execute_game(plot_map=True):
     for i in range(len(players)):
         player_output = str(players[i]) + "@" + str(score_by_player[i])
         excel_output += player_output + "\n"
-    fileLogger.info("|\n#" + str(turn_count) + "\n" + excel_output)
+    # fileLogger.info("|\n#" + str(turn_count) + "\n" + excel_output)
 
     if score_by_player[0] >= 10:
         return 1
@@ -154,4 +156,4 @@ def run_n_games(n):
 
 
 if __name__ == '__main__':
-    run_n_games(10)
+    run_n_games(1)
